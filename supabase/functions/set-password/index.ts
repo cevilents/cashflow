@@ -6,64 +6,63 @@ const supabase = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } },
 )
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 const MEMBER_EMAILS = new Set([
   'bima@cashflow.local',
   'aska@cashflow.local',
   'nanda@cashflow.local',
 ])
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+  })
+}
+
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS })
+  }
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   let body: { email?: string; password?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 })
+    return json({ error: 'Invalid JSON' }, 400)
   }
 
   const email = body.email?.toLowerCase()
   const password = body.password
   if (!email || !MEMBER_EMAILS.has(email)) {
-    return new Response(JSON.stringify({ error: 'Akun tidak dikenal' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: 'Akun tidak dikenal' }, 400)
   }
   if (!password || password.length < 6) {
-    return new Response(JSON.stringify({ error: 'Password minimal 6 karakter' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: 'Password minimal 6 karakter' }, 400)
   }
 
   const { data: member } = await supabase.from('members').select('*').eq('email', email).maybeSingle()
   if (!member) {
-    return new Response(JSON.stringify({ error: 'Akun belum disiapkan' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: 'Akun belum disiapkan' }, 400)
   }
 
   const { error: uerr } = await supabase.auth.admin.updateUserById(member.id, { password })
   if (uerr) {
-    return new Response(JSON.stringify({ error: uerr.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: uerr.message }, 500)
   }
 
   const { error: perr } = await supabase.from('members').update({ password_set: true }).eq('id', member.id)
   if (perr) {
-    return new Response(JSON.stringify({ error: perr.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: perr.message }, 500)
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
+  return json({ ok: true })
 })

@@ -6,11 +6,24 @@ const supabase = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } },
 )
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 const MEMBERS = [
   { email: 'bima@cashflow.local', name: 'Bima', color: '#10b981', icon: 'bima' },
   { email: 'aska@cashflow.local', name: 'Aska', color: '#6366f1', icon: 'aska' },
   { email: 'nanda@cashflow.local', name: 'Nanda', color: '#f59e0b', icon: 'nanda' },
 ]
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+  })
+}
 
 function randomPassword(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(24))
@@ -18,8 +31,11 @@ function randomPassword(): string {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS })
+  }
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   const { data: settings } = await supabase
@@ -28,9 +44,7 @@ Deno.serve(async (req: Request) => {
     .eq('id', 1)
     .maybeSingle()
   if (settings?.setup_complete) {
-    return new Response(JSON.stringify({ ok: true, initialized: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ ok: true, initialized: true })
   }
 
   for (const m of MEMBERS) {
@@ -41,27 +55,18 @@ Deno.serve(async (req: Request) => {
       user_metadata: { full_name: m.name },
     })
     if (uerr && !isAlreadyRegistered(uerr.message)) {
-      return new Response(JSON.stringify({ error: uerr.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return json({ error: uerr.message }, 500)
     }
     const userId = user?.user.id ?? (await findUserId(m.email))
     if (!userId) {
-      return new Response(JSON.stringify({ error: `Gagal membuat akun ${m.name}` }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return json({ error: `Gagal membuat akun ${m.name}` }, 500)
     }
     const { error: merr } = await supabase.from('members').upsert(
       { id: userId, name: m.name, email: m.email, color: m.color, icon: m.icon },
       { onConflict: 'email' },
     )
     if (merr) {
-      return new Response(JSON.stringify({ error: merr.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return json({ error: merr.message }, 500)
     }
   }
 
@@ -69,15 +74,10 @@ Deno.serve(async (req: Request) => {
     .from('app_settings')
     .upsert({ id: 1, setup_complete: true }, { onConflict: 'id' })
   if (serr) {
-    return new Response(JSON.stringify({ error: serr.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: serr.message }, 500)
   }
 
-  return new Response(JSON.stringify({ ok: true, initialized: false }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
+  return json({ ok: true, initialized: false })
 })
 
 function isAlreadyRegistered(message: string): boolean {
