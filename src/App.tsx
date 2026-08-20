@@ -5,7 +5,7 @@ import { ToastProvider } from './components/ui/Toast'
 import { ProtectedRoute, PublicOnlyRoute } from './components/auth/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
+import SetupPage from './pages/SetupPage'
 import DashboardPage from './pages/DashboardPage'
 import TransactionsPage from './pages/TransactionsPage'
 import AccountsPage from './pages/AccountsPage'
@@ -34,10 +34,10 @@ export default function App() {
                 }
               />
               <Route
-                path="/register"
+                path="/setup"
                 element={
                   <PublicOnlyRoute>
-                    <RegisterPage />
+                    <SetupPage />
                   </PublicOnlyRoute>
                 }
               />
