@@ -16,6 +16,14 @@ export function advanceDate(dateISO: string, frequency: Frequency): string {
   return format(next, 'yyyy-MM-dd')
 }
 
+const ID_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+
+export function monthLabel(d: Date): string {
+  return ID_MONTHS[d.getMonth()] ?? ''
+}
+
 export function formatDay(dateISO: string): string {
-  return format(parseISO(dateISO), 'dd MMM yyyy')
+  const d = parseISO(dateISO)
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${day} ${monthLabel(d)} ${d.getFullYear()}`
 }

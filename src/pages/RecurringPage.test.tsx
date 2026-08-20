@@ -129,7 +129,7 @@ describe('RecurringPage', () => {
     expect(screen.getByText('+Rp 5.000.000')).toBeInTheDocument()
     expect(screen.getByText('-Rp 250.000')).toBeInTheDocument()
     expect(screen.getAllByText(/Bulanan/)).toHaveLength(3)
-    expect(screen.getByText(/Jatuh tempo 21 Aug 2026/)).toBeInTheDocument()
+    expect(screen.getByText(/Jatuh tempo 21 Agu 2026/)).toBeInTheDocument()
     expect(screen.getByText(/nonaktif/)).toBeInTheDocument()
   })
 

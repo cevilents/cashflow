@@ -15,7 +15,7 @@ describe('advanceDate', () => {
 
 describe('formatDay', () => {
   it('formats an ISO date', () => {
-    expect(formatDay('2026-08-19')).toBe('19 Aug 2026')
+    expect(formatDay('2026-08-19')).toBe('19 Agu 2026')
   })
 })
 

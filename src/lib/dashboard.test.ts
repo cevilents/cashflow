@@ -31,7 +31,7 @@ describe('buildMonthlySeries', () => {
   it('returns six zeroed points for an empty list', () => {
     const series = buildMonthlySeries([], NOW)
     expect(series).toHaveLength(6)
-    expect(series[5]).toEqual({ key: '2026-08', label: 'Aug', income: 0, expense: 0 })
+    expect(series[5]).toEqual({ key: '2026-08', label: 'Agu', income: 0, expense: 0 })
     for (const p of series) {
       expect(p.income).toBe(0)
       expect(p.expense).toBe(0)

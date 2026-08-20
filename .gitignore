@@ -26,3 +26,6 @@ dist-ssr
 
 # env
 .env
+# browser test artifacts (playwright-mcp)
+.playwright-mcp/
+*.png

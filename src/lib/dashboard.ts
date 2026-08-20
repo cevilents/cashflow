@@ -1,4 +1,5 @@
 import { format, subMonths } from 'date-fns'
+import { monthLabel } from './dates'
 import type { Category, Transaction } from '../types/database'
 
 export interface MonthPoint {
@@ -23,7 +24,7 @@ export function buildMonthlySeries(
   const points: MonthPoint[] = []
   for (let i = monthCount - 1; i >= 0; i--) {
     const m = subMonths(now, i)
-    points.push({ key: format(m, 'yyyy-MM'), label: format(m, 'MMM'), income: 0, expense: 0 })
+    points.push({ key: format(m, 'yyyy-MM'), label: monthLabel(m), income: 0, expense: 0 })
   }
   const map = new Map(points.map((p) => [p.key, p]))
   for (const t of transactions) {
