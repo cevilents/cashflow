@@ -5,6 +5,12 @@ import { useRecurring, useCreateRecurring, useUpdateRecurring, useDeleteRecurrin
 import { useAccounts } from '../hooks/useAccounts'
 import { useCategories } from '../hooks/useCategories'
 import { useCreateTransaction } from '../hooks/useTransactions'
+import { useMembers } from '../hooks/useMembers'
+import { useReadOnly, useCurrentMember } from '../hooks/useReadOnly'
+import { getMemberById } from '../lib/members'
+import type { Member } from '../lib/members'
+import { MemberFilter } from '../components/layout/MemberFilter'
+import type { OwnerFilter } from '../components/layout/MemberFilter'
 import { formatRupiah } from '../lib/format'
 import { advanceDate, formatDay, todayISO } from '../lib/dates'
 import { useToast } from '../components/ui/Toast'
@@ -16,7 +22,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Spinner } from '../components/ui/Spinner'
 import { Badge } from '../components/ui/Badge'
-import type { Frequency, RecurringTransaction } from '../types/database'
+import type { Frequency, RecurringTransaction, Account, Category } from '../types/database'
 
 const frequencyLabels: Record<Frequency, string> = {
   weekly: 'Mingguan',
@@ -150,10 +156,94 @@ export function RecurringForm({
   )
 }
 
+interface RecurringItemProps {
+  r: RecurringTransaction
+  idle: boolean
+  accountsById: Record<string, Account>
+  categoriesById: Record<string, Category>
+  members: Member[]
+  recording: boolean
+  updatePending: boolean
+  onToggle: (r: RecurringTransaction) => void
+  onRecordNow: (r: RecurringTransaction) => void
+  onEdit: (r: RecurringTransaction) => void
+  onDelete: (r: RecurringTransaction) => void
+}
+
+function RecurringItem({ r, idle, accountsById, categoriesById, members, recording, updatePending, onToggle, onRecordNow, onEdit, onDelete }: RecurringItemProps) {
+  const readOnly = useReadOnly(r.user_id)
+  const owner = getMemberById(r.user_id, members)
+
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border border-border-subtle px-4 py-3 ${idle ? 'bg-surface-card/50 opacity-70' : 'bg-surface-card'}`}>
+      {!readOnly && (
+        <button
+          onClick={() => onToggle(r)}
+          aria-label={idle ? 'Aktifkan' : 'Nonaktifkan'}
+          className={`shrink-0 ${idle ? 'text-ink-muted' : 'text-good'}`}
+          disabled={updatePending}
+        >
+          {idle ? <Circle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+        </button>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className={`truncate text-sm font-medium text-ink ${idle ? 'line-through' : ''}`}>{r.name}</p>
+          {owner && (
+            <span className="flex shrink-0 items-center gap-1 rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+              <span className="h-2 w-2 rounded-full" style={{ background: owner.color }} />
+              {owner.name}
+            </span>
+          )}
+          <Badge tone={r.type === 'income' ? 'good' : 'bad'}>
+            {r.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+          </Badge>
+        </div>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          {accountsById[r.account_id]?.name ?? '?'}
+          {categoriesById[r.category_id ?? ''] ? ` · ${categoriesById[r.category_id ?? '']?.name}` : ''}
+          {' · '}
+          {frequencyLabels[r.frequency]}
+          {idle ? ' · nonaktif' : ''}
+        </p>
+      </div>
+      <div className="text-right">
+        <p className={`text-sm font-semibold tabular ${r.type === 'expense' ? 'text-bad' : 'text-good'}`}>
+          {r.type === 'expense' ? '-' : '+'}{formatRupiah(Number(r.amount))}
+        </p>
+        <p className="text-xs text-ink-muted">Jatuh tempo {formatDay(r.next_due_date)}</p>
+      </div>
+      {!readOnly && (
+        <div className="flex shrink-0 gap-1">
+          {!idle && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onRecordNow(r)}
+              disabled={recording}
+              aria-label="Catat sekarang"
+            >
+              <CalendarClock className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => onEdit(r)} aria-label="Ubah">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(r)} aria-label="Hapus" className="text-bad">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function RecurringPage() {
   const { data: recurring, isLoading } = useRecurring()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
+  const { data: members } = useMembers()
+  const currentMember = useCurrentMember()
   const createTx = useCreateTransaction()
   const updateRec = useUpdateRecurring()
   const deleteRec = useDeleteRecurring()
@@ -164,6 +254,7 @@ export default function RecurringPage() {
   const [editing, setEditing] = useState<RecurringTransaction | null>(null)
   const [deleting, setDeleting] = useState<RecurringTransaction | null>(null)
   const [recording, setRecording] = useState<string | null>(null)
+  const [owner, setOwner] = useState<OwnerFilter>('all')
 
   const accountsById = useMemo(() => Object.fromEntries((accounts ?? []).map((a) => [a.id, a])), [accounts])
   const categoriesById = useMemo(() => Object.fromEntries((categories ?? []).map((c) => [c.id, c])), [categories])
@@ -227,75 +318,10 @@ export default function RecurringPage() {
     )
   }
 
-  const activeItem = (r: RecurringTransaction) => (
-    <button
-      onClick={() => toggleActive(r)}
-      aria-label="Nonaktifkan"
-      className="shrink-0 text-good"
-      disabled={updateRec.isPending}
-    >
-      <CheckCircle2 className="h-5 w-5" />
-    </button>
-  )
+  const canManage = owner === 'all' || owner === currentMember?.id
 
-  const idleItem = (r: RecurringTransaction) => (
-    <button
-      onClick={() => toggleActive(r)}
-      aria-label="Aktifkan"
-      className="shrink-0 text-ink-muted"
-      disabled={updateRec.isPending}
-    >
-      <Circle className="h-5 w-5" />
-    </button>
-  )
-
-  const content = (r: RecurringTransaction, idle: boolean) => (
-    <>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className={`truncate text-sm font-medium text-ink ${idle ? 'line-through' : ''}`}>{r.name}</p>
-          <Badge tone={r.type === 'income' ? 'good' : 'bad'}>
-            {r.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
-          </Badge>
-        </div>
-        <p className="mt-0.5 text-xs text-ink-muted">
-          {accountsById[r.account_id]?.name ?? '?'}
-          {categoriesById[r.category_id ?? ''] ? ` · ${categoriesById[r.category_id ?? '']?.name}` : ''}
-          {' · '}
-          {frequencyLabels[r.frequency]}
-          {idle ? ' · nonaktif' : ''}
-        </p>
-      </div>
-      <div className="text-right">
-        <p className={`text-sm font-semibold tabular ${r.type === 'expense' ? 'text-bad' : 'text-good'}`}>
-          {r.type === 'expense' ? '-' : '+'}{formatRupiah(Number(r.amount))}
-        </p>
-        <p className="text-xs text-ink-muted">Jatuh tempo {formatDay(r.next_due_date)}</p>
-      </div>
-      <div className="flex shrink-0 gap-1">
-        {!idle && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => recordNow(r)}
-            disabled={recording === r.id}
-            aria-label="Catat sekarang"
-          >
-            <CalendarClock className="h-4 w-4" />
-          </Button>
-        )}
-        <Button variant="ghost" size="sm" onClick={() => openForm(r)} aria-label="Ubah">
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => setDeleting(r)} aria-label="Hapus" className="text-bad">
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </>
-  )
-
-  const activeItems = (recurring ?? []).filter((r) => r.is_active)
-  const idleItems = (recurring ?? []).filter((r) => !r.is_active)
+  const activeItems = (recurring ?? []).filter((r) => r.is_active && (owner === 'all' || r.user_id === owner))
+  const idleItems = (recurring ?? []).filter((r) => !r.is_active && (owner === 'all' || r.user_id === owner))
 
   return (
     <div className="space-y-4">
@@ -304,10 +330,14 @@ export default function RecurringPage() {
           <h1 className="text-xl font-bold text-ink">Transaksi Berulang</h1>
           <p className="text-sm text-ink-muted">Tagihan dan pemasukan terjadwal</p>
         </div>
-        <Button onClick={() => openForm(null)}>
-          <Plus className="h-4 w-4" /> Tambah
-        </Button>
+        {canManage && (
+          <Button onClick={() => openForm(null)}>
+            <Plus className="h-4 w-4" /> Tambah
+          </Button>
+        )}
       </div>
+
+      <MemberFilter value={owner} onChange={setOwner} />
 
       <div className="space-y-2">
         {activeItems.length === 0 && idleItems.length === 0 && (
@@ -317,16 +347,36 @@ export default function RecurringPage() {
           />
         )}
         {activeItems.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-card px-4 py-3">
-            {activeItem(r)}
-            {content(r, false)}
-          </div>
+          <RecurringItem
+            key={r.id}
+            r={r}
+            idle={false}
+            accountsById={accountsById}
+            categoriesById={categoriesById}
+            members={members ?? []}
+            recording={recording === r.id}
+            updatePending={updateRec.isPending}
+            onToggle={toggleActive}
+            onRecordNow={recordNow}
+            onEdit={openForm}
+            onDelete={setDeleting}
+          />
         ))}
         {idleItems.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-card/50 px-4 py-3 opacity-70">
-            {idleItem(r)}
-            {content(r, true)}
-          </div>
+          <RecurringItem
+            key={r.id}
+            r={r}
+            idle
+            accountsById={accountsById}
+            categoriesById={categoriesById}
+            members={members ?? []}
+            recording={recording === r.id}
+            updatePending={updateRec.isPending}
+            onToggle={toggleActive}
+            onRecordNow={recordNow}
+            onEdit={openForm}
+            onDelete={setDeleting}
+          />
         ))}
       </div>
 

@@ -6,6 +6,12 @@ import {
 } from 'lucide-react'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
 import { useTransactions } from '../hooks/useTransactions'
+import { useMembers } from '../hooks/useMembers'
+import { useReadOnly, useCurrentMember } from '../hooks/useReadOnly'
+import { getMemberById } from '../lib/members'
+import type { Member } from '../lib/members'
+import { MemberFilter } from '../components/layout/MemberFilter'
+import type { OwnerFilter } from '../components/layout/MemberFilter'
 import { useToast } from '../components/ui/Toast'
 import { Modal } from '../components/ui/Modal'
 import { Button } from '../components/ui/Button'
@@ -20,6 +26,46 @@ const ICONS: Record<string, typeof Tag> = {
   tag: Tag, shopping: ShoppingCart, food: Utensils, car: Car, home: Home, energy: Zap,
   phone: Smartphone, entertainment: Tv, travel: Plane, gift: Gift, salary: Briefcase,
   income: Banknote, health: HeartPulse, education: GraduationCap, game: Gamepad2, internet: Wifi,
+}
+
+interface CategoryCardProps {
+  category: Category
+  txCount: number
+  members: Member[]
+  onEdit: (c: Category) => void
+  onDelete: (c: Category) => void
+}
+
+function CategoryCard({ category, txCount, members, onEdit, onDelete }: CategoryCardProps) {
+  const readOnly = useReadOnly(category.user_id)
+  const Icon = ICONS[category.icon] ?? Tag
+  const member = getMemberById(category.user_id, members)
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-card px-4 py-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: `${category.color}22`, color: category.color }}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <span className="min-w-0 flex-1 text-sm font-medium text-ink">{category.name}</span>
+      {member && (
+        <span className="flex shrink-0 items-center gap-1 rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+          <span className="h-2 w-2 rounded-full" style={{ background: member.color }} />
+          {member.name}
+        </span>
+      )}
+      <span className="text-xs text-ink-muted">{txCount} transaksi</span>
+      {!readOnly && (
+        <div className="flex shrink-0 gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(category)} aria-label="Ubah">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(category)} aria-label="Hapus" className="text-bad">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function CategoryForm({
@@ -110,12 +156,15 @@ export function CategoryForm({
 export default function CategoriesPage() {
   const { data: categories, isLoading } = useCategories()
   const { data: transactions } = useTransactions()
+  const { data: members } = useMembers()
+  const currentMember = useCurrentMember()
   const deleteCat = useDeleteCategory()
   const { toast } = useToast()
   const [formOpen, setFormOpen] = useState(false)
   const [formSeq, setFormSeq] = useState(0)
   const [editing, setEditing] = useState<Category | null>(null)
   const [deleting, setDeleting] = useState<Category | null>(null)
+  const [owner, setOwner] = useState<OwnerFilter>('all')
 
   const txCountByCategory = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -146,7 +195,7 @@ export default function CategoriesPage() {
   }
 
   const renderGroup = (type: CategoryType, label: string) => {
-    const items = (categories ?? []).filter((c) => c.type === type)
+    const items = (categories ?? []).filter((c) => c.type === type && (owner === 'all' || c.user_id === owner))
     return (
       <div>
         <h2 className="mb-2 text-sm font-semibold text-ink-muted">{label}</h2>
@@ -154,29 +203,23 @@ export default function CategoriesPage() {
           <EmptyState title={`Belum ada kategori ${label.toLowerCase()}`} />
         ) : (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((c) => {
-              const Icon = ICONS[c.icon] ?? Tag
-              return (
-                <div key={c.id} className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-card px-4 py-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: `${c.color}22`, color: c.color }}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <span className="min-w-0 flex-1 text-sm font-medium text-ink">{c.name}</span>
-                  <span className="text-xs text-ink-muted">{txCountByCategory[c.id] ?? 0} transaksi</span>
-                  <Button variant="ghost" size="sm" onClick={() => { setEditing(c); setFormSeq((s) => s + 1); setFormOpen(true) }} aria-label="Ubah">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setDeleting(c)} aria-label="Hapus" className="text-bad">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )
-            })}
+            {items.map((c) => (
+              <CategoryCard
+                key={c.id}
+                category={c}
+                txCount={txCountByCategory[c.id] ?? 0}
+                members={members ?? []}
+                onEdit={(cat) => { setEditing(cat); setFormSeq((s) => s + 1); setFormOpen(true) }}
+                onDelete={setDeleting}
+              />
+            ))}
           </div>
         )}
       </div>
     )
   }
+
+  const canManage = owner === 'all' || owner === currentMember?.id
 
   return (
     <div className="space-y-6">
@@ -185,10 +228,14 @@ export default function CategoriesPage() {
           <h1 className="text-xl font-bold text-ink">Kategori</h1>
           <p className="text-sm text-ink-muted">Kelola kategori pemasukan dan pengeluaran</p>
         </div>
-        <Button onClick={() => { setEditing(null); setFormSeq((s) => s + 1); setFormOpen(true) }}>
-          <Plus className="h-4 w-4" /> Tambah Kategori
-        </Button>
+        {canManage && (
+          <Button onClick={() => { setEditing(null); setFormSeq((s) => s + 1); setFormOpen(true) }}>
+            <Plus className="h-4 w-4" /> Tambah Kategori
+          </Button>
+        )}
       </div>
+
+      <MemberFilter value={owner} onChange={setOwner} />
 
       {renderGroup('expense', 'Pengeluaran')}
       {renderGroup('income', 'Pemasukan')}

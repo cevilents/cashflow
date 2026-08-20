@@ -6,12 +6,14 @@ import { ToastProvider } from '../components/ui/Toast'
 import CategoriesPage from './CategoriesPage'
 import { createQueryClient, makeQueryChain } from '../test/queryTestUtils'
 import type { Category, Transaction } from '../types/database'
+import type { Member } from '../lib/members'
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'user-1' },
   from: vi.fn(),
   categories: [] as Category[],
   transactions: [] as Transaction[],
+  members: [] as Member[],
   chains: {} as Record<string, ReturnType<typeof makeQueryChain>>,
 }))
 
@@ -21,6 +23,10 @@ vi.mock('../lib/supabase', () => ({
 
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ user: mocks.user }),
+}))
+
+vi.mock('../hooks/useMembers', () => ({
+  useMembers: () => ({ data: mocks.members }),
 }))
 
 const categories: Category[] = [
@@ -78,6 +84,9 @@ describe('CategoriesPage', () => {
     vi.clearAllMocks()
     mocks.categories = categories
     mocks.transactions = []
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+    ]
     mocks.chains = {}
     installMock()
   })
@@ -219,5 +228,77 @@ describe('CategoriesPage', () => {
     })
 
     expect(cat?.delete).toHaveBeenCalledTimes(1)
+  })
+
+  it('narrows the categories to the selected owner via the filter', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.categories = [
+      { id: 'cat-own', user_id: 'user-1', name: 'Makanan', type: 'expense', icon: 'food', color: '#f59e0b', created_at: '2026-01-01T00:00:00Z' },
+      { id: 'cat-frn', user_id: 'user-2', name: 'Kos Aska', type: 'expense', icon: 'home', color: '#6366f1', created_at: '2026-01-01T00:00:00Z' },
+    ]
+    renderPage()
+    expect(await screen.findByText('Makanan')).toBeInTheDocument()
+    expect(screen.getByText('Kos Aska')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aska' }))
+
+    expect(screen.queryByText('Makanan')).not.toBeInTheDocument()
+    expect(screen.getByText('Kos Aska')).toBeInTheDocument()
+  })
+
+  it('hides edit and delete buttons for foreign categories', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.categories = [
+      { id: 'cat-own', user_id: 'user-1', name: 'Makanan', type: 'expense', icon: 'food', color: '#f59e0b', created_at: '2026-01-01T00:00:00Z' },
+      { id: 'cat-frn', user_id: 'user-2', name: 'Kos Aska', type: 'expense', icon: 'home', color: '#6366f1', created_at: '2026-01-01T00:00:00Z' },
+    ]
+    renderPage()
+    await screen.findByText('Makanan')
+
+    const ownCard = screen.getByText('Makanan').closest('.rounded-xl') as HTMLElement
+    expect(within(ownCard).getByRole('button', { name: 'Ubah' })).toBeInTheDocument()
+    expect(within(ownCard).getByRole('button', { name: 'Hapus' })).toBeInTheDocument()
+
+    const foreignCard = screen.getByText('Kos Aska').closest('.rounded-xl') as HTMLElement
+    expect(within(foreignCard).queryByRole('button', { name: 'Ubah' })).not.toBeInTheDocument()
+    expect(within(foreignCard).queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
+  })
+
+  it('shows an owner chip with the member name on each category card', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.categories = [
+      { id: 'cat-own', user_id: 'user-1', name: 'Makanan', type: 'expense', icon: 'food', color: '#f59e0b', created_at: '2026-01-01T00:00:00Z' },
+      { id: 'cat-frn', user_id: 'user-2', name: 'Kos Aska', type: 'expense', icon: 'home', color: '#6366f1', created_at: '2026-01-01T00:00:00Z' },
+    ]
+    renderPage()
+    await screen.findByText('Makanan')
+
+    const ownCard = screen.getByText('Makanan').closest('.rounded-xl') as HTMLElement
+    expect(within(ownCard).getByText('Bima')).toBeInTheDocument()
+
+    const foreignCard = screen.getByText('Kos Aska').closest('.rounded-xl') as HTMLElement
+    expect(within(foreignCard).getByText('Aska')).toBeInTheDocument()
+  })
+
+  it('hides the Tambah Kategori button when filtering a foreign member', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    renderPage()
+    await screen.findByText('Makanan')
+    expect(screen.getByText('Tambah Kategori')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aska' }))
+    expect(screen.queryByText('Tambah Kategori')).not.toBeInTheDocument()
   })
 })

@@ -6,6 +6,7 @@ import { ToastProvider } from '../components/ui/Toast'
 import RecurringPage from './RecurringPage'
 import { createQueryClient, makeQueryChain } from '../test/queryTestUtils'
 import type { RecurringTransaction, Account, Category } from '../types/database'
+import type { Member } from '../lib/members'
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'user-1' },
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   recurring: [] as RecurringTransaction[],
   accounts: [] as Account[],
   categories: [] as Category[],
+  members: [] as Member[],
   today: '2026-08-20',
   chains: {} as Record<string, ReturnType<typeof makeQueryChain>>,
 }))
@@ -23,6 +25,10 @@ vi.mock('../lib/supabase', () => ({
 
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ user: mocks.user }),
+}))
+
+vi.mock('../hooks/useMembers', () => ({
+  useMembers: () => ({ data: mocks.members }),
 }))
 
 vi.mock('../lib/dates', async (importOriginal) => ({
@@ -95,6 +101,9 @@ describe('RecurringPage', () => {
     mocks.recurring = recurring
     mocks.accounts = accounts
     mocks.categories = categories
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+    ]
     mocks.today = '2026-08-20'
     mocks.chains = {}
     installMock()
@@ -365,5 +374,81 @@ describe('RecurringPage', () => {
     fireEvent.click(btn)
     expect(btn).toBeDisabled()
     await act(async () => {})
+  })
+
+  it('narrows the recurring list to the selected owner via the filter', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.recurring = [
+      { id: 'rec-own', user_id: 'user-1', name: 'Gaji', account_id: 'acc-2', category_id: 'cat-inc', type: 'income', amount: 5000000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
+      { id: 'rec-frn', user_id: 'user-2', name: 'Kos Aska', account_id: 'acc-1', category_id: 'cat-exp', type: 'expense', amount: 500000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
+    ]
+    renderPage()
+    expect(await screen.findByText('Gaji')).toBeInTheDocument()
+    expect(screen.getByText('Kos Aska')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aska' }))
+
+    expect(screen.queryByText('Gaji')).not.toBeInTheDocument()
+    expect(screen.getByText('Kos Aska')).toBeInTheDocument()
+  })
+
+  it('hides edit, delete, record-now, and toggle buttons for foreign recurring items', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.recurring = [
+      { id: 'rec-own', user_id: 'user-1', name: 'Gaji', account_id: 'acc-2', category_id: 'cat-inc', type: 'income', amount: 5000000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
+      { id: 'rec-frn', user_id: 'user-2', name: 'Kos Aska', account_id: 'acc-1', category_id: 'cat-exp', type: 'expense', amount: 500000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
+    ]
+    renderPage()
+    await screen.findByText('Gaji')
+
+    const ownCard = screen.getByText('Gaji').closest('.rounded-xl') as HTMLElement
+    expect(within(ownCard).getByRole('button', { name: 'Ubah' })).toBeInTheDocument()
+    expect(within(ownCard).getByRole('button', { name: 'Hapus' })).toBeInTheDocument()
+    expect(within(ownCard).getByRole('button', { name: 'Catat sekarang' })).toBeInTheDocument()
+    expect(within(ownCard).getByRole('button', { name: 'Nonaktifkan' })).toBeInTheDocument()
+
+    const foreignCard = screen.getByText('Kos Aska').closest('.rounded-xl') as HTMLElement
+    expect(within(foreignCard).queryByRole('button', { name: 'Ubah' })).not.toBeInTheDocument()
+    expect(within(foreignCard).queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
+    expect(within(foreignCard).queryByRole('button', { name: 'Catat sekarang' })).not.toBeInTheDocument()
+    expect(within(foreignCard).queryByRole('button', { name: 'Nonaktifkan' })).not.toBeInTheDocument()
+  })
+
+  it('shows an owner chip with the member name on each recurring item', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.recurring = [
+      { id: 'rec-own', user_id: 'user-1', name: 'Gaji', account_id: 'acc-2', category_id: 'cat-inc', type: 'income', amount: 5000000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
+      { id: 'rec-frn', user_id: 'user-2', name: 'Kos Aska', account_id: 'acc-1', category_id: 'cat-exp', type: 'expense', amount: 500000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
+    ]
+    renderPage()
+    await screen.findByText('Gaji')
+
+    const ownCard = screen.getByText('Gaji').closest('.rounded-xl') as HTMLElement
+    expect(within(ownCard).getByText('Bima')).toBeInTheDocument()
+
+    const foreignCard = screen.getByText('Kos Aska').closest('.rounded-xl') as HTMLElement
+    expect(within(foreignCard).getByText('Aska')).toBeInTheDocument()
+  })
+
+  it('hides the Tambah button when filtering a foreign member', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    renderPage()
+    await screen.findByText('Gaji')
+    expect(screen.getAllByText('Tambah')).not.toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aska' }))
+    expect(screen.queryByRole('button', { name: 'Tambah' })).not.toBeInTheDocument()
   })
 })
