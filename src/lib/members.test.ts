@@ -19,7 +19,7 @@ describe('members', () => {
   })
 
   it('resolves a member by id', () => {
-    const members = MEMBER_SLOTS.map((s, i) => ({ id: String(i), ...s }))
+    const members = MEMBER_SLOTS.map((s, i) => ({ id: String(i), ...s, password_set: true }))
     expect(getMemberById('1', members)?.name).toBe('Aska')
     expect(getMemberById('nope', members)).toBeUndefined()
     expect(getMemberById(undefined, members)).toBeUndefined()

@@ -12,6 +12,11 @@ const MEMBERS = [
   { email: 'nanda@cashflow.local', name: 'Nanda', color: '#f59e0b', icon: 'nanda' },
 ]
 
+function randomPassword(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24))
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('') + '!A1'
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
@@ -28,44 +33,30 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  let body: { passwords?: Record<string, string> }
-  try {
-    body = await req.json()
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 })
-  }
-
-  const passwords = body.passwords ?? {}
-  for (const m of MEMBERS) {
-    const password = passwords[m.email]
-    if (!password || password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: `Password untuk ${m.name} minimal 6 karakter` }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      )
-    }
-  }
-
   for (const m of MEMBERS) {
     const { data: user, error: uerr } = await supabase.auth.admin.createUser({
       email: m.email,
-      password: passwords[m.email],
+      password: randomPassword(),
       email_confirm: true,
       user_metadata: { full_name: m.name },
     })
-    if (uerr) {
+    if (uerr && !isAlreadyRegistered(uerr.message)) {
       return new Response(JSON.stringify({ error: uerr.message }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       })
     }
-    const { error: merr } = await supabase.from('members').insert({
-      id: user!.user.id,
-      name: m.name,
-      email: m.email,
-      color: m.color,
-      icon: m.icon,
-    })
+    const userId = user?.user.id ?? (await findUserId(m.email))
+    if (!userId) {
+      return new Response(JSON.stringify({ error: `Gagal membuat akun ${m.name}` }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    const { error: merr } = await supabase.from('members').upsert(
+      { id: userId, name: m.name, email: m.email, color: m.color, icon: m.icon },
+      { onConflict: 'email' },
+    )
     if (merr) {
       return new Response(JSON.stringify({ error: merr.message }), {
         status: 500,
@@ -88,3 +79,13 @@ Deno.serve(async (req: Request) => {
     headers: { 'Content-Type': 'application/json' },
   })
 })
+
+function isAlreadyRegistered(message: string): boolean {
+  return message.toLowerCase().includes('already been registered')
+}
+
+async function findUserId(email: string): Promise<string | null> {
+  const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  const match = (data?.users ?? []).find((u) => u.email === email)
+  return match?.id ?? null
+}

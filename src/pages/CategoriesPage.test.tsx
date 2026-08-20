@@ -85,7 +85,7 @@ describe('CategoriesPage', () => {
     mocks.categories = categories
     mocks.transactions = []
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
     ]
     mocks.chains = {}
     installMock()
@@ -232,8 +232,8 @@ describe('CategoriesPage', () => {
 
   it('narrows the categories to the selected owner via the filter', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.categories = [
       { id: 'cat-own', user_id: 'user-1', name: 'Makanan', type: 'expense', icon: 'food', color: '#f59e0b', created_at: '2026-01-01T00:00:00Z' },
@@ -251,8 +251,8 @@ describe('CategoriesPage', () => {
 
   it('hides edit and delete buttons for foreign categories', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.categories = [
       { id: 'cat-own', user_id: 'user-1', name: 'Makanan', type: 'expense', icon: 'food', color: '#f59e0b', created_at: '2026-01-01T00:00:00Z' },
@@ -272,8 +272,8 @@ describe('CategoriesPage', () => {
 
   it('shows an owner chip with the member name on each category card', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.categories = [
       { id: 'cat-own', user_id: 'user-1', name: 'Makanan', type: 'expense', icon: 'food', color: '#f59e0b', created_at: '2026-01-01T00:00:00Z' },
@@ -291,8 +291,8 @@ describe('CategoriesPage', () => {
 
   it('hides the Tambah Kategori button when filtering a foreign member', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     renderPage()
     await screen.findByText('Makanan')

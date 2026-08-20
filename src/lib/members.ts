@@ -22,6 +22,7 @@ export interface Member {
   email: string
   color: string
   icon: string
+  password_set: boolean
 }
 
 export function getMemberById(id: string | undefined, members: Member[]): Member | undefined {

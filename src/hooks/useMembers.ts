@@ -5,7 +5,7 @@ import type { Member } from '../lib/members'
 const selectMembers = async (): Promise<Member[]> => {
   const { data, error } = await supabase
     .from('members')
-    .select('id, name, email, color, icon')
+    .select('id, name, email, color, icon, password_set')
     .order('name', { ascending: true })
   if (error) throw error
   return (data ?? []) as Member[]

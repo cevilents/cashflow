@@ -16,6 +16,7 @@ const member: Member = {
   email: 'bima@example.com',
   color: '#10b981',
   icon: 'face',
+  password_set: true,
 }
 
 describe('useMembers', () => {
@@ -33,7 +34,7 @@ describe('useMembers', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(mocks.from).toHaveBeenCalledWith('members')
-    expect(chain.select).toHaveBeenCalledWith('id, name, email, color, icon')
+    expect(chain.select).toHaveBeenCalledWith('id, name, email, color, icon, password_set')
     expect(chain.order).toHaveBeenCalledWith('name', { ascending: true })
     expect(result.current.data).toEqual([member])
   })

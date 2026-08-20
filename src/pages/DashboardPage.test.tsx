@@ -39,8 +39,8 @@ vi.mock('../hooks/useMembers', () => ({
   useMembers: () => ({ data: mocks.members }),
 }))
 
-const bima: Member = { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' }
-const aska: Member = { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' }
+const bima: Member = { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true }
+const aska: Member = { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true }
 
 const account: Account = {
   id: 'acc-1',

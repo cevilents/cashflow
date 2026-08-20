@@ -26,6 +26,7 @@ const aska: Member = {
   email: 'aska@cashflow.local',
   color: '#6366f1',
   icon: 'aska',
+  password_set: true,
 }
 
 const bima: Member = {
@@ -34,6 +35,7 @@ const bima: Member = {
   email: 'bima@cashflow.local',
   color: '#10b981',
   icon: 'bima',
+  password_set: true,
 }
 
 describe('useCurrentMember', () => {

@@ -54,8 +54,8 @@ const categories: Category[] = [
   { id: 'cat-2', user_id: 'user-2', name: 'Transport', type: 'expense', icon: '', color: '#6366f1', created_at: '2026-01-01T00:00:00Z' },
 ]
 
-const bima: Member = { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' }
-const aska: Member = { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' }
+const bima: Member = { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true }
+const aska: Member = { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true }
 
 function makeTransactions(): Transaction[] {
   const now = new Date()

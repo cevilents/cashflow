@@ -101,7 +101,7 @@ describe('TransactionsPage', () => {
     mocks.accounts = accounts
     mocks.categories = categories
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
     ]
     mocks.chains = {}
     installMock()
@@ -269,8 +269,8 @@ describe('TransactionsPage', () => {
 
   it('narrows the list to a selected member via the filter', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.transactions = [
       { id: 'tx-a', user_id: 'user-1', account_id: 'acc-1', type: 'income', category_id: 'cat-in-1', amount: 100000, to_account_id: null, note: '', date: '2026-08-10', receipt_url: null, created_at: '2026-08-10T00:00:00Z', updated_at: '2026-08-10T00:00:00Z' },
@@ -287,8 +287,8 @@ describe('TransactionsPage', () => {
 
   it('hides the Tambah button when filtering a foreign member', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.transactions = makeTransactions()
     renderPage()

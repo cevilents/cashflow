@@ -34,6 +34,7 @@ const currentMember: Member = {
   email: 'bima@cashflow.local',
   color: '#10b981',
   icon: 'bima',
+  password_set: true,
 }
 
 vi.mock('../hooks/useMembers', () => ({

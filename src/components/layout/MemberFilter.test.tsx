@@ -4,8 +4,8 @@ import { MemberFilter } from './MemberFilter'
 import type { Member } from '../../lib/members'
 
 const members: Member[] = [
-  { id: 'member-a', name: 'Bima', email: 'bima@example.com', color: '#10b981', icon: 'face' },
-  { id: 'member-b', name: 'Aska', email: 'aska@example.com', color: '#6366f1', icon: 'face' },
+  { id: 'member-a', name: 'Bima', email: 'bima@example.com', color: '#10b981', icon: 'face', password_set: true },
+  { id: 'member-b', name: 'Aska', email: 'aska@example.com', color: '#6366f1', icon: 'face', password_set: true },
 ]
 
 const mocks = vi.hoisted(() => ({ useMembers: vi.fn() }))

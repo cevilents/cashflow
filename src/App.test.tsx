@@ -45,9 +45,11 @@ describe('App routing', () => {
 
   afterEach(cleanup)
 
-  it('renders the SetupPage when navigating to /setup', async () => {
+  it('no longer matches the removed /setup route', async () => {
     renderAt('/setup')
-    expect(await screen.findByText('Buat password untuk masing-masing')).toBeInTheDocument()
+    await waitForAuthToSettle()
+    expect(screen.queryByText('Buat password untuk masing-masing')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pengaturan awal belum selesai.')).not.toBeInTheDocument()
   })
 
   it('no longer matches /register', async () => {

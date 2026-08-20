@@ -89,7 +89,7 @@ describe('buildReportRows', () => {
 
   it('resolves account and category names and signs income positive expense negative', () => {
     const members: Member[] = [
-      { id: 'u', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'u', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
     ]
     const rows = buildReportRows(
       [

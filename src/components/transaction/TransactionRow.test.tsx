@@ -3,11 +3,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { TransactionRow } from './TransactionRow'
 import { formatDay } from '../../lib/dates'
 import type { Account, Transaction } from '../../types/database'
+import type { Member } from '../../lib/members'
 
 const mocks = vi.hoisted(() => ({
   receiptUrl: vi.fn(),
   readOnly: false,
-  members: [] as { id: string; name: string; email: string; color: string; icon: string }[],
+  members: [] as Member[],
 }))
 
 vi.mock('../receipt/receiptStorage', () => ({
@@ -57,7 +58,7 @@ describe('TransactionRow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.readOnly = false
-    mocks.members = [{ id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' }]
+    mocks.members = [{ id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true }]
   })
   afterEach(cleanup)
 

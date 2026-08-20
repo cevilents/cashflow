@@ -102,7 +102,7 @@ describe('RecurringPage', () => {
     mocks.accounts = accounts
     mocks.categories = categories
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
     ]
     mocks.today = '2026-08-20'
     mocks.chains = {}
@@ -378,8 +378,8 @@ describe('RecurringPage', () => {
 
   it('narrows the recurring list to the selected owner via the filter', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.recurring = [
       { id: 'rec-own', user_id: 'user-1', name: 'Gaji', account_id: 'acc-2', category_id: 'cat-inc', type: 'income', amount: 5000000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
@@ -397,8 +397,8 @@ describe('RecurringPage', () => {
 
   it('hides edit, delete, record-now, and toggle buttons for foreign recurring items', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.recurring = [
       { id: 'rec-own', user_id: 'user-1', name: 'Gaji', account_id: 'acc-2', category_id: 'cat-inc', type: 'income', amount: 5000000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
@@ -422,8 +422,8 @@ describe('RecurringPage', () => {
 
   it('shows an owner chip with the member name on each recurring item', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     mocks.recurring = [
       { id: 'rec-own', user_id: 'user-1', name: 'Gaji', account_id: 'acc-2', category_id: 'cat-inc', type: 'income', amount: 5000000, frequency: 'monthly', next_due_date: '2026-09-01', is_active: true, created_at: '2026-08-01T00:00:00Z' },
@@ -441,8 +441,8 @@ describe('RecurringPage', () => {
 
   it('hides the Tambah button when filtering a foreign member', async () => {
     mocks.members = [
-      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
-      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
     ]
     renderPage()
     await screen.findByText('Gaji')
