@@ -59,18 +59,30 @@ Deno.serve(async (req: Request) => {
         headers: { 'Content-Type': 'application/json' },
       })
     }
-    await supabase.from('members').insert({
+    const { error: merr } = await supabase.from('members').insert({
       id: user!.user.id,
       name: m.name,
       email: m.email,
       color: m.color,
       icon: m.icon,
     })
+    if (merr) {
+      return new Response(JSON.stringify({ error: merr.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
   }
 
-  await supabase
+  const { error: serr } = await supabase
     .from('app_settings')
     .upsert({ id: 1, setup_complete: true }, { onConflict: 'id' })
+  if (serr) {
+    return new Response(JSON.stringify({ error: serr.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   return new Response(JSON.stringify({ ok: true, initialized: false }), {
     headers: { 'Content-Type': 'application/json' },
