@@ -49,6 +49,7 @@ export function useUpdateAccount() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
       qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['recurring'] })
     },
   })
 }
@@ -63,6 +64,7 @@ export function useDeleteAccount() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
       qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['recurring'] })
     },
   })
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, cleanup, waitFor } from '@testing-library/react'
-import { useAccounts, useCreateAccount } from './useAccounts'
+import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from './useAccounts'
 import { makeQueryChain, renderQueryHook } from '../test/queryTestUtils'
 import type { Account } from '../types/database'
 
@@ -131,5 +131,79 @@ describe('useCreateAccount', () => {
       }),
     ).rejects.toThrow('Not authenticated')
     expect(chain.insert).not.toHaveBeenCalled()
+  })
+})
+
+describe('useUpdateAccount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    auth.id = 'user-1'
+  })
+  afterEach(cleanup)
+
+  it('updates by id and invalidates accounts, transactions, and recurring', async () => {
+    const chain = makeQueryChain()
+    chain.order.mockResolvedValue({ data: [], error: null })
+    chain.eq.mockResolvedValue({ data: null, error: null })
+    mocks.from.mockReturnValue(chain)
+
+    const { result, client } = renderQueryHook(() => {
+      const accounts = useAccounts()
+      const update = useUpdateAccount()
+      return { accounts, update }
+    })
+    await waitFor(() => expect(result.current.accounts.isSuccess).toBe(true))
+    expect(chain.order).toHaveBeenCalledTimes(1)
+
+    client.setQueryData(['transactions', 'user-1'], [])
+    client.setQueryData(['recurring', 'user-1'], [])
+
+    await act(async () => {
+      await result.current.update.mutateAsync({ id: 'acc-1', name: 'Bank Baru' })
+    })
+
+    expect(mocks.from).toHaveBeenCalledWith('accounts')
+    expect(chain.update).toHaveBeenCalledWith({ name: 'Bank Baru' })
+    expect(chain.eq).toHaveBeenCalledWith('id', 'acc-1')
+    await waitFor(() => expect(chain.order).toHaveBeenCalledTimes(2))
+    expect(client.getQueryState(['transactions', 'user-1'])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(['recurring', 'user-1'])?.isInvalidated).toBe(true)
+  })
+})
+
+describe('useDeleteAccount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    auth.id = 'user-1'
+  })
+  afterEach(cleanup)
+
+  it('deletes by id and invalidates accounts, transactions, and recurring', async () => {
+    const chain = makeQueryChain()
+    chain.order.mockResolvedValue({ data: [], error: null })
+    chain.eq.mockResolvedValue({ data: null, error: null })
+    mocks.from.mockReturnValue(chain)
+
+    const { result, client } = renderQueryHook(() => {
+      const accounts = useAccounts()
+      const remove = useDeleteAccount()
+      return { accounts, remove }
+    })
+    await waitFor(() => expect(result.current.accounts.isSuccess).toBe(true))
+    expect(chain.order).toHaveBeenCalledTimes(1)
+
+    client.setQueryData(['transactions', 'user-1'], [])
+    client.setQueryData(['recurring', 'user-1'], [])
+
+    await act(async () => {
+      await result.current.remove.mutateAsync('acc-1')
+    })
+
+    expect(mocks.from).toHaveBeenCalledWith('accounts')
+    expect(chain.delete).toHaveBeenCalled()
+    expect(chain.eq).toHaveBeenCalledWith('id', 'acc-1')
+    await waitFor(() => expect(chain.order).toHaveBeenCalledTimes(2))
+    expect(client.getQueryState(['transactions', 'user-1'])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(['recurring', 'user-1'])?.isInvalidated).toBe(true)
   })
 })
