@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 import { useCategories } from '../hooks/useCategories'
+import { useMembers } from '../hooks/useMembers'
 import { formatRupiah } from '../lib/format'
 import { toCSV, downloadFile, buildReportRows, REPORT_HEADER } from '../lib/csv'
 import { buildReportSummary } from '../lib/reports'
@@ -11,6 +12,7 @@ import { Button } from '../components/ui/Button'
 import { Select } from '../components/ui/Select'
 import { Spinner } from '../components/ui/Spinner'
 import { EmptyState } from '../components/ui/EmptyState'
+import { MemberFilter, type OwnerFilter } from '../components/layout/MemberFilter'
 
 interface MonthOption { value: string; label: string }
 
@@ -18,23 +20,31 @@ export default function ReportsPage() {
   const { data: transactions, isLoading } = useTransactions()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
+  const { data: members } = useMembers()
   const currentMonth = useMemo(() => format(new Date(), 'yyyy-MM'), [])
   const [month, setMonth] = useState(currentMonth)
+  const [owner, setOwner] = useState<OwnerFilter>('all')
+  const memberList = useMemo(() => members ?? [], [members])
+
+  const filteredTransactions = useMemo(
+    () => (owner === 'all' ? (transactions ?? []) : (transactions ?? []).filter((t) => t.user_id === owner)),
+    [transactions, owner],
+  )
 
   const months: MonthOption[] = useMemo(() => {
     const set = new Set<string>()
-    for (const t of transactions ?? []) set.add(t.date.slice(0, 7))
+    for (const t of filteredTransactions) set.add(t.date.slice(0, 7))
     set.add(currentMonth)
     return [...set].sort().reverse().map((m) => ({ value: m, label: m }))
-  }, [transactions, currentMonth])
+  }, [filteredTransactions, currentMonth])
 
   const report = useMemo(
-    () => buildReportSummary(transactions ?? [], categories ?? [], month),
-    [transactions, categories, month],
+    () => buildReportSummary(filteredTransactions, categories ?? [], month),
+    [filteredTransactions, categories, month],
   )
 
   const exportCsv = () => {
-    const rows = buildReportRows(transactions ?? [], accounts ?? [], categories ?? [], month)
+    const rows = buildReportRows(filteredTransactions, accounts ?? [], categories ?? [], month)
     downloadFile(`cashflow-${month}.csv`, toCSV([REPORT_HEADER, ...rows]))
   }
 
@@ -67,6 +77,10 @@ export default function ReportsPage() {
           </Button>
         </div>
       </div>
+
+      {memberList.length > 0 && (
+        <MemberFilter value={owner} onChange={setOwner} />
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-border-subtle bg-surface-card p-5">
