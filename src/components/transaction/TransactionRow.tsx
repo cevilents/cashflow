@@ -57,7 +57,7 @@ export function TransactionRow({
         {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '⇄ '}{formatRupiah(tx.amount)}
       </div>
       <div className="flex gap-1">
-        <Button variant="ghost" size="sm" onClick={() => onEdit(tx)} aria-label="Edit">
+        <Button variant="ghost" size="sm" onClick={() => onEdit(tx)} aria-label="Ubah">
           <Pencil className="h-4 w-4" />
         </Button>
         <Button variant="ghost" size="sm" onClick={() => onDelete(tx)} aria-label="Hapus" className="text-bad">

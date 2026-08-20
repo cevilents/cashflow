@@ -140,7 +140,7 @@ describe('SettingsPage', () => {
   it('exports a backup JSON carrying version, user id, and all data', async () => {
     renderPage()
     await awaitData()
-    fireEvent.click(screen.getByRole('button', { name: /Export Backup/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Ekspor Backup/ }))
     expect(mocks.downloadFile).toHaveBeenCalledTimes(1)
     const [filename, content, type] = mocks.downloadFile.mock.calls[0] as [string, string, string]
     expect(filename).toMatch(/^cashflow-backup-\d{4}-\d{2}-\d{2}\.json$/)

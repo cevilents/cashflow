@@ -149,7 +149,7 @@ describe('CategoriesPage', () => {
   it('opens a pre-filled form when editing a category', async () => {
     renderPage()
     await screen.findByText('Makanan')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0] as HTMLButtonElement)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ubah' })[0] as HTMLButtonElement)
     const dialog = await screen.findByRole('dialog')
     expect(screen.getByText('Edit Kategori')).toBeInTheDocument()
     expect((within(dialog).getByLabelText('Nama kategori') as HTMLInputElement).value).toBe('Makanan')
@@ -158,7 +158,7 @@ describe('CategoriesPage', () => {
   it('updates a category through the form', async () => {
     renderPage()
     await screen.findByText('Makanan')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0] as HTMLButtonElement)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ubah' })[0] as HTMLButtonElement)
     const dialog = await screen.findByRole('dialog')
     const cat = mocks.chains['categories']
     fireEvent.change(within(dialog).getByLabelText('Nama kategori'), { target: { value: 'Makan Siang' } })

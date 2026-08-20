@@ -11,9 +11,8 @@ import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { EmptyState } from '../components/ui/EmptyState'
 import { useToast } from '../components/ui/Toast'
+import { accountTypeLabels } from '../lib/labels'
 import type { Account } from '../types/database'
-
-const typeLabels: Record<string, string> = { cash: 'Tunai', bank: 'Bank', ewallet: 'E-wallet', other: 'Lainnya' }
 
 export default function AccountsPage() {
   const { data: accounts, isLoading } = useAccounts()
@@ -90,13 +89,13 @@ export default function AccountsPage() {
       <div className="flex items-center gap-2">
         <span className="h-3 w-3 rounded-full" style={{ background: a.color }} />
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{a.name}</h3>
-        <span className="text-xs text-ink-muted">{typeLabels[a.type]}</span>
+        <span className="text-xs text-ink-muted">{accountTypeLabels[a.type]}</span>
       </div>
       <p className="mt-3 text-2xl font-bold text-ink tabular">{formatRupiah(balances[a.id] ?? 0)}</p>
       <div className="mt-4 flex items-center justify-between">
         <span className="text-xs text-ink-muted">{txCountByAccount[a.id] ?? 0} transaksi</span>
         <div className="flex gap-1">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(a)} aria-label="Edit">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(a)} aria-label="Ubah">
             <Pencil className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="sm" onClick={() => toggleArchive(a)} aria-label={a.is_archived ? 'Aktifkan' : 'Arsipkan'}>

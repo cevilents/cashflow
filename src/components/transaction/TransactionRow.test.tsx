@@ -104,7 +104,7 @@ describe('TransactionRow', () => {
     const row = tx({})
     render(<TransactionRow tx={row} account={account} onEdit={onEdit} onDelete={onDelete} />)
 
-    fireEvent.click(screen.getByLabelText('Edit'))
+    fireEvent.click(screen.getByLabelText('Ubah'))
     fireEvent.click(screen.getByLabelText('Hapus'))
 
     expect(onEdit).toHaveBeenCalledWith(row)

@@ -136,7 +136,7 @@ describe('RecurringPage', () => {
   it('opens a pre-filled form when editing a recurring transaction', async () => {
     renderPage()
     await screen.findByText('Gaji')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0] as HTMLButtonElement)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ubah' })[0] as HTMLButtonElement)
     const dialog = await screen.findByRole('dialog')
     expect(screen.getByText('Edit Transaksi Berulang')).toBeInTheDocument()
     expect((within(dialog).getByLabelText('Nama') as HTMLInputElement).value).toBe('Gaji')
@@ -220,7 +220,7 @@ describe('RecurringPage', () => {
     const dialogNotOpen = screen.queryByRole('dialog')
     expect(dialogNotOpen).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[1] as HTMLButtonElement)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ubah' })[1] as HTMLButtonElement)
     const dialog = await screen.findByRole('dialog')
     const rec = mocks.chains['recurring_transactions']
 

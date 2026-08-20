@@ -137,7 +137,7 @@ describe('AccountsPage', () => {
   it('opens a pre-filled form when editing an account', async () => {
     renderPage()
     await screen.findByText('Dompet')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0] as HTMLButtonElement)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ubah' })[0] as HTMLButtonElement)
     const dialog = await screen.findByRole('dialog')
     expect(screen.getByText('Edit Akun')).toBeInTheDocument()
     expect((within(dialog).getByLabelText('Nama akun') as HTMLInputElement).value).toBe('Dompet')

@@ -187,7 +187,7 @@ describe('TransactionsPage', () => {
     renderPage()
     await screen.findByText('+Rp 100.000')
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0] as HTMLButtonElement)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ubah' })[0] as HTMLButtonElement)
     expect(await screen.findByText('Edit Transaksi')).toBeInTheDocument()
     const dialog = screen.getByRole('dialog')
     expect((within(dialog).getByLabelText('Jumlah (Rp)') as HTMLInputElement).value).toBe('100000')

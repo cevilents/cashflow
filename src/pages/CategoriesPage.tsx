@@ -163,7 +163,7 @@ export default function CategoriesPage() {
                   </div>
                   <span className="min-w-0 flex-1 text-sm font-medium text-ink">{c.name}</span>
                   <span className="text-xs text-ink-muted">{txCountByCategory[c.id] ?? 0} transaksi</span>
-                  <Button variant="ghost" size="sm" onClick={() => { setEditing(c); setFormSeq((s) => s + 1); setFormOpen(true) }} aria-label="Edit">
+                  <Button variant="ghost" size="sm" onClick={() => { setEditing(c); setFormSeq((s) => s + 1); setFormOpen(true) }} aria-label="Ubah">
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setDeleting(c)} aria-label="Hapus" className="text-bad">

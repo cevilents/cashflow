@@ -164,11 +164,11 @@ export default function SettingsPage() {
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={exportBackup}>
-            <Download className="h-4 w-4" /> Export Backup
+            <Download className="h-4 w-4" /> Ekspor Backup
           </Button>
           <label className="cursor-pointer">
             <span className="inline-flex items-center gap-2 rounded-xl border border-border-subtle bg-surface-soft px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-surface-card">
-              <Upload className="h-4 w-4" /> {importing ? 'Mengimpor…' : 'Import Backup'}
+              <Upload className="h-4 w-4" /> {importing ? 'Mengimpor…' : 'Impor Backup'}
             </span>
             <input
               type="file"

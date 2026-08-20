@@ -7,14 +7,8 @@ import { Select } from '../ui/Select'
 import { useToast } from '../ui/Toast'
 import { useCreateAccount, useUpdateAccount } from '../../hooks/useAccounts'
 import { parseAmountInput } from '../../lib/format'
+import { accountTypeLabels } from '../../lib/labels'
 import type { Account, AccountType } from '../../types/database'
-
-const typeLabels: Record<AccountType, string> = {
-  cash: 'Tunai',
-  bank: 'Bank',
-  ewallet: 'E-wallet',
-  other: 'Lainnya',
-}
 
 export function AccountForm({
   open,
@@ -87,7 +81,7 @@ export function AccountForm({
       <form onSubmit={submit} className="space-y-4">
         <Input label="Nama akun" value={name} onChange={(e) => setName(e.target.value)} placeholder="Misal: BRI, GoPay, Dompet" />
         <Select label="Tipe" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
-          {Object.entries(typeLabels).map(([value, label]) => (
+          {Object.entries(accountTypeLabels).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </Select>

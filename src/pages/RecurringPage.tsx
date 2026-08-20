@@ -284,7 +284,7 @@ export default function RecurringPage() {
             <CalendarClock className="h-4 w-4" />
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={() => openForm(r)} aria-label="Edit">
+        <Button variant="ghost" size="sm" onClick={() => openForm(r)} aria-label="Ubah">
           <Pencil className="h-4 w-4" />
         </Button>
         <Button variant="ghost" size="sm" onClick={() => setDeleting(r)} aria-label="Hapus" className="text-bad">
