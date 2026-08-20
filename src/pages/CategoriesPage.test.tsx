@@ -192,4 +192,32 @@ describe('CategoriesPage', () => {
     expect(cat?.delete).toHaveBeenCalled()
     expect(cat?.eq).toHaveBeenCalledWith('id', 'cat-1')
   })
+
+  it('disables the confirm button and ignores extra clicks while a delete is pending', async () => {
+    renderPage()
+    await screen.findByText('Makanan')
+    const cat = mocks.chains['categories']
+    cat?.delete.mockReturnValue(cat)
+    cat?.eq.mockReturnValue(new Promise(() => {}))
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Hapus' })[0] as HTMLButtonElement)
+    expect(await screen.findByText('Hapus kategori?')).toBeInTheDocument()
+
+    const dialog = screen.getByRole('dialog')
+    const confirmBtn = within(dialog).getByRole('button', { name: 'Hapus' })
+    expect(confirmBtn).not.toBeDisabled()
+
+    await act(async () => {
+      fireEvent.click(confirmBtn)
+    })
+
+    const loadingBtn = await within(dialog).findByRole('button', { name: 'Menghapus…' })
+    expect(loadingBtn).toBeDisabled()
+
+    await act(async () => {
+      fireEvent.click(loadingBtn)
+    })
+
+    expect(cat?.delete).toHaveBeenCalledTimes(1)
+  })
 })

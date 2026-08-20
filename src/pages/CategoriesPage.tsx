@@ -126,7 +126,7 @@ export default function CategoriesPage() {
   }, [transactions])
 
   const confirmDelete = async () => {
-    if (!deleting) return
+    if (!deleting || deleteCat.isPending) return
     try {
       await deleteCat.mutateAsync(deleting.id)
       toast('Kategori dihapus')
@@ -200,6 +200,7 @@ export default function CategoriesPage() {
         message="Transaksi yang memakai kategori ini tetap ada, hanya saja kategorinya dihapus."
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
+        loading={deleteCat.isPending}
       />
     </div>
   )
