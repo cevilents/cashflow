@@ -4,10 +4,22 @@ import { TransactionRow } from './TransactionRow'
 import { formatDay } from '../../lib/dates'
 import type { Account, Transaction } from '../../types/database'
 
-const mocks = vi.hoisted(() => ({ receiptUrl: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  receiptUrl: vi.fn(),
+  readOnly: false,
+  members: [] as { id: string; name: string; email: string; color: string; icon: string }[],
+}))
 
 vi.mock('../receipt/receiptStorage', () => ({
   receiptUrl: mocks.receiptUrl,
+}))
+
+vi.mock('../../hooks/useReadOnly', () => ({
+  useReadOnly: () => mocks.readOnly,
+}))
+
+vi.mock('../../hooks/useMembers', () => ({
+  useMembers: () => ({ data: mocks.members }),
 }))
 
 const account: Account = {
@@ -42,7 +54,11 @@ function tx(overrides: Partial<Transaction>): Transaction {
 }
 
 describe('TransactionRow', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.readOnly = false
+    mocks.members = [{ id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' }]
+  })
   afterEach(cleanup)
 
   it('renders an expense with a negative amount, category, account, and date', () => {
@@ -130,5 +146,23 @@ describe('TransactionRow', () => {
   it('does not show the attachment button without a receipt', () => {
     render(<TransactionRow tx={tx({})} account={account} onEdit={vi.fn()} onDelete={vi.fn()} />)
     expect(screen.queryByLabelText('Lihat bukti')).not.toBeInTheDocument()
+  })
+
+  it('shows edit and delete buttons for an own transaction', () => {
+    render(<TransactionRow tx={tx({})} account={account} onEdit={vi.fn()} onDelete={vi.fn()} />)
+    expect(screen.getByLabelText('Ubah')).toBeInTheDocument()
+    expect(screen.getByLabelText('Hapus')).toBeInTheDocument()
+  })
+
+  it('hides edit and delete buttons for a foreign transaction', () => {
+    mocks.readOnly = true
+    render(<TransactionRow tx={tx({})} account={account} onEdit={vi.fn()} onDelete={vi.fn()} />)
+    expect(screen.queryByLabelText('Ubah')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Hapus')).not.toBeInTheDocument()
+  })
+
+  it('shows an owner label with the member name', () => {
+    render(<TransactionRow tx={tx({})} account={account} onEdit={vi.fn()} onDelete={vi.fn()} />)
+    expect(screen.getByText('Bima')).toBeInTheDocument()
   })
 })

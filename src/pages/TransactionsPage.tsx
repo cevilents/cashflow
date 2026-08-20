@@ -4,9 +4,12 @@ import { Plus } from 'lucide-react'
 import { useTransactions, useDeleteTransaction } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 import { useCategories } from '../hooks/useCategories'
+import { useCurrentMember } from '../hooks/useReadOnly'
 import { TransactionList } from '../components/transaction/TransactionList'
 import { TransactionFilters, emptyFilters } from '../components/transaction/TransactionFilters'
 import type { TxFiltersValue } from '../components/transaction/TransactionFilters'
+import { MemberFilter } from '../components/layout/MemberFilter'
+import type { OwnerFilter } from '../components/layout/MemberFilter'
 import { TransactionForm } from '../components/transaction/TransactionForm'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Button } from '../components/ui/Button'
@@ -22,12 +25,14 @@ export default function TransactionsPage() {
   const { data: categories } = useCategories()
   const deleteTx = useDeleteTransaction()
   const { toast } = useToast()
+  const currentMember = useCurrentMember()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const [filters, setFilters] = useState<TxFiltersValue>(emptyFilters)
+  const [owner, setOwner] = useState<OwnerFilter>('all')
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
@@ -47,6 +52,7 @@ export default function TransactionsPage() {
     const list = transactions ?? []
     const q = filters.search.toLowerCase().trim()
     return list.filter((t) => {
+      if (owner !== 'all' && t.user_id !== owner) return false
       if (filters.type && t.type !== filters.type) return false
       if (filters.accountId && t.account_id !== filters.accountId && t.to_account_id !== filters.accountId) return false
       if (filters.categoryId && t.category_id !== filters.categoryId) return false
@@ -60,7 +66,7 @@ export default function TransactionsPage() {
       }
       return true
     })
-  }, [transactions, filters, accountsById, categoriesById])
+  }, [transactions, filters, accountsById, categoriesById, owner])
 
   const summary = useMemo(() => {
     let income = 0
@@ -112,6 +118,8 @@ export default function TransactionsPage() {
     )
   }
 
+  const canManage = owner === 'all' || owner === currentMember?.id
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -119,10 +127,14 @@ export default function TransactionsPage() {
           <h1 className="text-xl font-bold text-ink">Transaksi</h1>
           <p className="text-sm text-ink-muted">Catat pemasukan, pengeluaran, dan transfer</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Tambah
-        </Button>
+        {canManage && (
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Tambah
+          </Button>
+        )}
       </div>
+
+      <MemberFilter value={owner} onChange={setOwner} />
 
       <TransactionFilters value={filters} onChange={setFilters} accounts={accounts ?? []} categories={categories ?? []} />
 

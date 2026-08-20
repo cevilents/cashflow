@@ -6,6 +6,7 @@ import { ToastProvider } from '../components/ui/Toast'
 import TransactionsPage from './TransactionsPage'
 import { createQueryClient, makeQueryChain } from '../test/queryTestUtils'
 import type { Account, Category, Transaction } from '../types/database'
+import type { Member } from '../lib/members'
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'user-1' },
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   transactions: [] as Transaction[],
   accounts: [] as Account[],
   categories: [] as Category[],
+  members: [] as Member[],
   chains: {} as Record<string, ReturnType<typeof makeQueryChain>>,
 }))
 
@@ -22,6 +24,10 @@ vi.mock('../lib/supabase', () => ({
 
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ user: mocks.user }),
+}))
+
+vi.mock('../hooks/useMembers', () => ({
+  useMembers: () => ({ data: mocks.members }),
 }))
 
 const accounts: Account[] = [
@@ -94,6 +100,9 @@ describe('TransactionsPage', () => {
     mocks.transactions = []
     mocks.accounts = accounts
     mocks.categories = categories
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+    ]
     mocks.chains = {}
     installMock()
   })
@@ -256,5 +265,38 @@ describe('TransactionsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Muat Ulang' }))
     expect(await screen.findByText('+Rp 100.000')).toBeInTheDocument()
+  })
+
+  it('narrows the list to a selected member via the filter', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.transactions = [
+      { id: 'tx-a', user_id: 'user-1', account_id: 'acc-1', type: 'income', category_id: 'cat-in-1', amount: 100000, to_account_id: null, note: '', date: '2026-08-10', receipt_url: null, created_at: '2026-08-10T00:00:00Z', updated_at: '2026-08-10T00:00:00Z' },
+      { id: 'tx-b', user_id: 'user-2', account_id: 'acc-2', type: 'expense', category_id: 'cat-ex-1', amount: 25000, to_account_id: null, note: 'Kopi', date: '2026-08-05', receipt_url: null, created_at: '2026-08-05T00:00:00Z', updated_at: '2026-08-05T00:00:00Z' },
+    ]
+    renderPage()
+
+    await screen.findByText('+Rp 100.000')
+    fireEvent.click(screen.getByRole('button', { name: 'Aska' }))
+
+    expect(screen.queryByText('+Rp 100.000')).not.toBeInTheDocument()
+    expect(screen.getByText('-Rp 25.000')).toBeInTheDocument()
+  })
+
+  it('hides the Tambah button when filtering a foreign member', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.transactions = makeTransactions()
+    renderPage()
+
+    await screen.findByText('+Rp 100.000')
+    expect(screen.getByText('Tambah')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aska' }))
+    expect(screen.queryByText('Tambah')).not.toBeInTheDocument()
   })
 })
