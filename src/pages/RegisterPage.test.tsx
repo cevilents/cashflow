@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import type { Session, User } from '@supabase/supabase-js'
 import { AuthProvider } from '../hooks/useAuth'
 import { ToastProvider } from '../components/ui/Toast'
 import RegisterPage from './RegisterPage'
@@ -20,6 +21,26 @@ vi.mock('../lib/supabase', () => ({
   supabase: { auth: mocks.auth, from: mocks.from },
 }))
 
+const user: User = {
+  id: 'user-1',
+  aud: 'authenticated',
+  email: 'a@b.com',
+  created_at: '2026-01-01T00:00:00Z',
+  user_metadata: { full_name: 'Budi' },
+  app_metadata: {},
+}
+
+function makeSession(): Session {
+  return {
+    access_token: 'token',
+    refresh_token: 'refresh',
+    expires_in: 3600,
+    expires_at: 1_700_000_000,
+    token_type: 'bearer',
+    user,
+  }
+}
+
 function renderRegisterPage() {
   return render(
     <MemoryRouter initialEntries={['/register']}>
@@ -28,6 +49,7 @@ function renderRegisterPage() {
           <Routes>
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/login" element={<p>login-page</p>} />
+            <Route path="/" element={<p>home-page</p>} />
           </Routes>
         </AuthProvider>
       </ToastProvider>
@@ -97,6 +119,19 @@ describe('RegisterPage', () => {
     })
     expect(await screen.findByText('Akun dibuat! Silakan masuk.')).toBeInTheDocument()
     expect(await screen.findByText('login-page')).toBeInTheDocument()
+  })
+
+  it('goes straight to the home page when registration establishes a session', async () => {
+    mocks.auth.signUp.mockResolvedValue({
+      data: { session: makeSession(), user },
+      error: null,
+    })
+    renderRegisterPage()
+    await act(async () => {
+      fillValidAndSubmit()
+    })
+    expect(await screen.findByText('Akun berhasil dibuat!')).toBeInTheDocument()
+    expect(await screen.findByText('home-page')).toBeInTheDocument()
   })
 
   it('shows a translated error toast when registration fails', async () => {

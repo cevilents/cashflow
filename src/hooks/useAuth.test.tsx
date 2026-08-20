@@ -46,20 +46,27 @@ function makeSession(overrides: Partial<Session> = {}): Session {
 function Probe() {
   const { user: currentUser, loading, login, register, logout } = useAuth()
   const [error, setError] = useState('')
+  const [regSession, setRegSession] = useState<boolean | null>(null)
   const run = (fn: () => Promise<void>) => {
     fn().catch((e: unknown) => {
       setError((e as { message?: string }).message ?? 'error')
     })
+  }
+  const runRegister = () => {
+    register('a@b.com', 'secret123', 'Budi')
+      .then((hasSession) => setRegSession(hasSession))
+      .catch((e: unknown) => {
+        setError((e as { message?: string }).message ?? 'error')
+      })
   }
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="user">{currentUser ? currentUser.email : 'none'}</span>
       <span data-testid="error">{error}</span>
+      <span data-testid="reg-session">{regSession === null ? 'none' : String(regSession)}</span>
       <button onClick={() => run(() => login('a@b.com', 'secret123'))}>login</button>
-      <button onClick={() => run(() => register('a@b.com', 'secret123', 'Budi'))}>
-        register
-      </button>
+      <button onClick={runRegister}>register</button>
       <button onClick={() => run(logout)}>logout</button>
     </div>
   )
@@ -147,6 +154,19 @@ describe('AuthProvider', () => {
       options: { data: { full_name: 'Budi' } },
     })
     expect(upsert).toHaveBeenCalledWith({ id: 'user-1', full_name: 'Budi' }, { onConflict: 'id' })
+    expect(screen.getByTestId('reg-session')).toHaveTextContent('false')
+  })
+
+  it('reports an established session when registration needs no confirmation', async () => {
+    mocks.auth.signUp.mockResolvedValue({
+      data: { session: makeSession(), user },
+      error: null,
+    })
+    renderProvider()
+    await act(async () => {
+      fireEvent.click(screen.getByText('register'))
+    })
+    expect(screen.getByTestId('reg-session')).toHaveTextContent('true')
   })
 
   it('surfaces a register failure', async () => {
@@ -159,6 +179,27 @@ describe('AuthProvider', () => {
       fireEvent.click(screen.getByText('register'))
     })
     expect(await screen.findByTestId('error')).toHaveTextContent('User already registered')
+  })
+
+  it('surfaces a profile upsert failure during login', async () => {
+    upsert = vi
+      .fn()
+      .mockResolvedValue({ error: { message: 'new row violates row-level security policy' } })
+    mocks.from.mockReturnValue({ upsert })
+    mocks.auth.signInWithPassword.mockResolvedValue({
+      data: { session: makeSession(), user },
+      error: null,
+    })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderProvider()
+    await act(async () => {
+      fireEvent.click(screen.getByText('login'))
+    })
+    expect(await screen.findByTestId('error')).toHaveTextContent(
+      'new row violates row-level security policy',
+    )
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 
   it('clears the user on sign out and signs out of supabase', async () => {

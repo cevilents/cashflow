@@ -32,6 +32,22 @@ describe('translateAuthError', () => {
     )
   })
 
+  it('maps email send rate limit by its error code', () => {
+    expect(
+      translateAuthError({ code: 'over_email_send_rate_limit', message: 'Email rate limit exceeded' }),
+    ).toBe('Terlalu banyak percobaan. Coba lagi nanti.')
+  })
+
+  it('maps the email rate limit message without a code', () => {
+    expect(translateAuthError({ message: 'Email rate limit exceeded' })).toBe(
+      'Terlalu banyak percobaan. Coba lagi nanti.',
+    )
+  })
+
+  it('maps the invalid credentials code when no message is present', () => {
+    expect(translateAuthError({ code: 'invalid_credentials' })).toBe('Email atau password salah')
+  })
+
   it('falls back to a generic message for unknown errors', () => {
     expect(translateAuthError({ message: 'something unexpected' })).toBe(
       'Terjadi kesalahan. Coba lagi.',

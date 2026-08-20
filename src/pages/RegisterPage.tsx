@@ -25,9 +25,14 @@ export default function RegisterPage() {
     }
     setSubmitting(true)
     try {
-      await register(email, password, fullName)
-      toast('Akun dibuat! Silakan masuk.')
-      navigate('/login')
+      const hasSession = await register(email, password, fullName)
+      if (hasSession) {
+        toast('Akun berhasil dibuat!')
+        navigate('/')
+      } else {
+        toast('Akun dibuat! Silakan masuk.')
+        navigate('/login')
+      }
     } catch (error) {
       toast(translateAuthError(error), 'error')
     } finally {

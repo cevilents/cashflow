@@ -7,7 +7,7 @@ interface AuthContextValue {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, fullName?: string) => Promise<void>
+  register: (email: string, password: string, fullName?: string) => Promise<boolean>
   logout: () => Promise<void>
 }
 
@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
   login: async () => {},
-  register: async () => {},
+  register: async () => false,
   logout: async () => {},
 })
 
@@ -27,7 +27,8 @@ async function ensureProfile(user: User) {
     { onConflict: 'id' },
   )
   if (error) {
-    console.error('Gagal menyinkronkan profil', error.message)
+    console.error('Gagal menyinkronkan profil:', error)
+    throw error
   }
 }
 
@@ -58,19 +59,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const register = useCallback(async (email: string, password: string, fullName = '') => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } },
-    })
-    if (error) {
-      throw error
-    }
-    if (data.user) {
-      await ensureProfile(data.user)
-    }
-  }, [])
+  const register = useCallback(
+    async (email: string, password: string, fullName = ''): Promise<boolean> => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName } },
+      })
+      if (error) {
+        throw error
+      }
+      if (data.user) {
+        await ensureProfile(data.user)
+      }
+      return data.session != null
+    },
+    [],
+  )
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut()
