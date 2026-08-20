@@ -6,6 +6,7 @@ import { ToastProvider } from '../components/ui/Toast'
 import AccountsPage from './AccountsPage'
 import { createQueryClient, makeQueryChain } from '../test/queryTestUtils'
 import type { Account, Transaction } from '../types/database'
+import type { Member } from '../lib/members'
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'user-1' },
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   accounts: [] as Account[],
   transactions: [] as Transaction[],
   chains: {} as Record<string, ReturnType<typeof makeQueryChain>>,
+  members: [] as Member[],
 }))
 
 vi.mock('../lib/supabase', () => ({
@@ -21,6 +23,10 @@ vi.mock('../lib/supabase', () => ({
 
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ user: mocks.user }),
+}))
+
+vi.mock('../hooks/useMembers', () => ({
+  useMembers: () => ({ data: mocks.members }),
 }))
 
 const accounts: Account[] = [
@@ -77,6 +83,9 @@ describe('AccountsPage', () => {
     vi.clearAllMocks()
     mocks.accounts = accounts
     mocks.transactions = []
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+    ]
     mocks.chains = {}
     installMock()
   })
@@ -194,5 +203,69 @@ describe('AccountsPage', () => {
     expect(await screen.findByText('Akun dihapus')).toBeInTheDocument()
     expect(acc?.delete).toHaveBeenCalled()
     expect(acc?.eq).toHaveBeenCalledWith('id', 'acc-1')
+  })
+
+  it('filters accounts by owner when a member is selected', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.accounts = [
+      { id: 'acc-1', user_id: 'user-1', name: 'Dompet', type: 'cash', opening_balance: 100000, color: '#10b981', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+      { id: 'acc-2', user_id: 'user-2', name: 'Rekening Aska', type: 'bank', opening_balance: 50000, color: '#6366f1', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+    ]
+    renderPage()
+
+    expect(await screen.findByText('Dompet')).toBeInTheDocument()
+    expect(screen.getByText('Rekening Aska')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aska' }))
+
+    expect(screen.queryByText('Dompet')).not.toBeInTheDocument()
+    expect(screen.getByText('Rekening Aska')).toBeInTheDocument()
+  })
+
+  it('hides edit, archive, and delete buttons for foreign accounts', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.accounts = [
+      { id: 'acc-1', user_id: 'user-1', name: 'Dompet', type: 'cash', opening_balance: 100000, color: '#10b981', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+      { id: 'acc-2', user_id: 'user-2', name: 'Rekening Aska', type: 'bank', opening_balance: 50000, color: '#6366f1', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+    ]
+    renderPage()
+
+    await screen.findByText('Dompet')
+
+    const ownCard = screen.getByText('Dompet').closest('div.rounded-2xl') as HTMLElement
+    expect(within(ownCard).getByRole('button', { name: 'Ubah' })).toBeInTheDocument()
+    expect(within(ownCard).getByRole('button', { name: 'Arsipkan' })).toBeInTheDocument()
+    expect(within(ownCard).getByRole('button', { name: 'Hapus' })).toBeInTheDocument()
+
+    const foreignCard = screen.getByText('Rekening Aska').closest('div.rounded-2xl') as HTMLElement
+    expect(within(foreignCard).queryByRole('button', { name: 'Ubah' })).not.toBeInTheDocument()
+    expect(within(foreignCard).queryByRole('button', { name: 'Arsipkan' })).not.toBeInTheDocument()
+    expect(within(foreignCard).queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
+  })
+
+  it('shows an owner chip with the member name on each account card', async () => {
+    mocks.members = [
+      { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+      { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska' },
+    ]
+    mocks.accounts = [
+      { id: 'acc-1', user_id: 'user-1', name: 'Dompet', type: 'cash', opening_balance: 100000, color: '#10b981', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+      { id: 'acc-2', user_id: 'user-2', name: 'Rekening Aska', type: 'bank', opening_balance: 50000, color: '#6366f1', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+    ]
+    renderPage()
+
+    await screen.findByText('Dompet')
+
+    const ownCard = screen.getByText('Dompet').closest('div.rounded-2xl') as HTMLElement
+    expect(within(ownCard).getByText('Bima')).toBeInTheDocument()
+
+    const foreignCard = screen.getByText('Rekening Aska').closest('div.rounded-2xl') as HTMLElement
+    expect(within(foreignCard).getByText('Aska')).toBeInTheDocument()
   })
 })
