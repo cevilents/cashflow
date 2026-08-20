@@ -43,10 +43,10 @@ function passwordInputs() {
 }
 
 function fillAllPasswords() {
-  const [bima, aska, nanda] = passwordInputs()
-  fireEvent.change(bima, { target: { value: 'abc123' } })
-  fireEvent.change(aska, { target: { value: 'abc123' } })
-  fireEvent.change(nanda, { target: { value: 'abc123' } })
+  const inputs = passwordInputs()
+  fireEvent.change(inputs[0]!, { target: { value: 'abc123' } })
+  fireEvent.change(inputs[1]!, { target: { value: 'abc123' } })
+  fireEvent.change(inputs[2]!, { target: { value: 'abc123' } })
 }
 
 function submitForm() {
@@ -89,10 +89,10 @@ describe('SetupPage', () => {
 
   it('shows an error toast for short passwords and does not call invoke', async () => {
     renderSetupPage()
-    const [bima, aska, nanda] = passwordInputs()
-    fireEvent.change(bima, { target: { value: '123' } })
-    fireEvent.change(aska, { target: { value: '123' } })
-    fireEvent.change(nanda, { target: { value: '123' } })
+    const inputs = passwordInputs()
+    fireEvent.change(inputs[0]!, { target: { value: '123' } })
+    fireEvent.change(inputs[1]!, { target: { value: '123' } })
+    fireEvent.change(inputs[2]!, { target: { value: '123' } })
     await act(async () => {
       submitForm()
     })
