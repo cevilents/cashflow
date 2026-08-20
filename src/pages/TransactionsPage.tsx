@@ -34,7 +34,9 @@ export default function TransactionsPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditing(null)
       setFormOpen(true)
-      setSearchParams({}, { replace: true })
+      const next = new URLSearchParams(searchParams)
+      next.delete('new')
+      setSearchParams(next, { replace: true })
     }
   }, [searchParams, setSearchParams])
 
@@ -82,7 +84,7 @@ export default function TransactionsPage() {
     setFormOpen(true)
   }
   const confirmDelete = async () => {
-    if (!deleting) return
+    if (!deleting || deleteTx.isPending) return
     try {
       await deleteTx.mutateAsync(deleting.id)
       toast('Transaksi dihapus')
@@ -160,6 +162,7 @@ export default function TransactionsPage() {
         open={deleting !== null}
         title="Hapus transaksi?"
         message="Transaksi ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan."
+        loading={deleteTx.isPending}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
       />

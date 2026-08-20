@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, useSearchParams } from 'react-router-dom'
+import { MemoryRouter, useNavigate, useSearchParams } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '../components/ui/Toast'
 import TransactionsPage from './TransactionsPage'
@@ -67,6 +67,11 @@ function LocationProbe() {
   return <span data-testid="new-param">{params.get('new') ?? 'none'}</span>
 }
 
+function NavTrigger() {
+  const navigate = useNavigate()
+  return <button onClick={() => navigate('/transactions?new=1')}>buka-form</button>
+}
+
 function renderPage(initialEntries = ['/transactions']) {
   const client = createQueryClient()
   const view = render(
@@ -75,6 +80,7 @@ function renderPage(initialEntries = ['/transactions']) {
         <ToastProvider>
           <TransactionsPage />
           <LocationProbe />
+          <NavTrigger />
         </ToastProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -125,6 +131,8 @@ describe('TransactionsPage', () => {
     fireEvent.change(screen.getByLabelText('Tipe transaksi'), { target: { value: 'income' } })
     expect(screen.queryByText('-Rp 25.000')).not.toBeInTheDocument()
     expect(screen.getByText('+Rp 100.000')).toBeInTheDocument()
+    expect(screen.queryByText('Rp 25.000')).not.toBeInTheDocument()
+    expect(screen.getByText('Rp 100.000')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Tipe transaksi'), { target: { value: '' } })
     fireEvent.change(screen.getByLabelText('Cari'), { target: { value: 'kopi' } })
@@ -159,6 +167,17 @@ describe('TransactionsPage', () => {
 
   it('opens the create form from ?new=1 and clears the query param', async () => {
     renderPage(['/transactions?new=1'])
+    expect(await screen.findByText('Tambah Transaksi')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('new-param')).toHaveTextContent('none'))
+  })
+
+  it('reopens the create form when navigating to ?new=1 while the page is mounted', async () => {
+    mocks.transactions = makeTransactions()
+    renderPage()
+    await screen.findByText('+Rp 100.000')
+    expect(screen.queryByText('Tambah Transaksi')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'buka-form' }))
     expect(await screen.findByText('Tambah Transaksi')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByTestId('new-param')).toHaveTextContent('none'))
   })

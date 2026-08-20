@@ -52,4 +52,24 @@ describe('ConfirmDialog', () => {
     )
     expect(screen.getByText('Hapus Akun')).toBeInTheDocument()
   })
+
+  it('disables the confirm button while loading and never calls onConfirm', () => {
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+    render(
+      <ConfirmDialog
+        open
+        title="Hapus Akun"
+        message="Yakin?"
+        loading
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />,
+    )
+    const button = screen.getByRole('button', { name: 'Menghapus…' }) as HTMLButtonElement
+    expect(button).toBeDisabled()
+    fireEvent.click(button)
+    expect(onConfirm).not.toHaveBeenCalled()
+    expect(onCancel).not.toHaveBeenCalled()
+  })
 })
