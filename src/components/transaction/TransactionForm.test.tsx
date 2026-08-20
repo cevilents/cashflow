@@ -71,14 +71,15 @@ function makeCreateChain() {
 
 function renderForm(editing?: Transaction | null) {
   const onClose = vi.fn()
+  const client = createQueryClient()
   const view = render(
-    <QueryClientProvider client={createQueryClient()}>
+    <QueryClientProvider client={client}>
       <ToastProvider>
         <TransactionForm open onClose={onClose} editing={editing} />
       </ToastProvider>
     </QueryClientProvider>,
   )
-  return { onClose, ...view }
+  return { onClose, client, ...view }
 }
 
 function form() {
@@ -102,9 +103,10 @@ const editingTx: Transaction = {
 
 describe('TransactionForm', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.accounts = accounts
     mocks.categories = categories
+    mocks.receiptUrl.mockResolvedValue('https://cdn/old.jpg')
   })
 
   afterEach(cleanup)
@@ -301,7 +303,7 @@ describe('TransactionForm', () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ receipt_url: null }))
   })
 
-  it('surfaces save failures as an error toast', async () => {
+  it('surfaces save failures as an Indonesian error toast', async () => {
     mocks.update.mockRejectedValue(new Error('network down'))
     renderForm(editingTx)
 
@@ -309,6 +311,149 @@ describe('TransactionForm', () => {
       fireEvent.submit(form())
     })
 
-    expect(await screen.findByText('network down')).toBeInTheDocument()
+    expect(await screen.findByText('Koneksi bermasalah. Coba lagi.')).toBeInTheDocument()
+  })
+
+  it('drops a pending receipt when switching to transfer and never uploads it', async () => {
+    const { onClose } = renderForm()
+    fireEvent.change(screen.getByLabelText('Jumlah (Rp)'), { target: { value: '50000' } })
+    fireEvent.change(screen.getByLabelText('Kategori'), { target: { value: 'cat-ex-1' } })
+    fireEvent.change(document.querySelector('#tx-form input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['x'], 'struk.jpg', { type: 'image/jpeg' })] },
+    })
+    expect(screen.getByAltText('Pratinjau bukti')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    expect(screen.queryByText('Bukti transaksi (opsional)')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Transfer ke'), { target: { value: 'acc-2' } })
+    const chain = makeCreateChain()
+    mocks.from.mockReturnValue(chain)
+
+    await act(async () => {
+      fireEvent.submit(form())
+    })
+
+    expect(mocks.uploadReceipt).not.toHaveBeenCalled()
+    expect(mocks.removeReceipt).not.toHaveBeenCalled()
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'transfer', category_id: null, receipt_url: null }),
+    )
+    expect(await screen.findByText('Transaksi ditambahkan')).toBeInTheDocument()
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('removes the stored receipt and clears the field when converting to transfer', async () => {
+    mocks.receiptUrl.mockResolvedValue('https://cdn/old.jpg')
+    renderForm(editingTx)
+    await screen.findByAltText('Pratinjau bukti')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    fireEvent.change(screen.getByLabelText('Jumlah (Rp)'), { target: { value: '25000' } })
+    fireEvent.change(screen.getByLabelText('Transfer ke'), { target: { value: 'acc-2' } })
+
+    await act(async () => {
+      fireEvent.submit(form())
+    })
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'transfer', category_id: null, to_account_id: 'acc-2', receipt_url: null }),
+    )
+    expect(mocks.removeReceipt).toHaveBeenCalledWith('user-1/tx-1/old.jpg')
+    expect(await screen.findByText('Transaksi diperbarui')).toBeInTheDocument()
+  })
+
+  it('clears a wrong-type category when switching between income and expense', () => {
+    renderForm()
+    fireEvent.change(screen.getByLabelText('Kategori'), { target: { value: 'cat-ex-1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Pemasukan' }))
+
+    expect((screen.getByLabelText('Kategori') as HTMLSelectElement).value).toBe('')
+    fireEvent.submit(form())
+    expect(screen.getByText('Pilih kategori')).toBeInTheDocument()
+  })
+
+  it('revalidates the category against the new type when editing', async () => {
+    const incomeTx: Transaction = {
+      ...editingTx,
+      type: 'income',
+      category_id: 'cat-in-1',
+      receipt_url: null,
+    }
+    renderForm(incomeTx)
+    expect((screen.getByLabelText('Kategori') as HTMLSelectElement).value).toBe('cat-in-1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pengeluaran' }))
+    expect((screen.getByLabelText('Kategori') as HTMLSelectElement).value).toBe('')
+
+    fireEvent.change(screen.getByLabelText('Kategori'), { target: { value: 'cat-ex-1' } })
+    await act(async () => {
+      fireEvent.submit(form())
+    })
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'expense', category_id: 'cat-ex-1' }),
+    )
+  })
+
+  it('keeps the old receipt when a replacement upload fails', async () => {
+    mocks.receiptUrl.mockResolvedValue('https://cdn/old.jpg')
+    mocks.uploadReceipt.mockRejectedValue(new Error('Payload too large'))
+    renderForm(editingTx)
+    await screen.findByAltText('Pratinjau bukti')
+
+    fireEvent.click(screen.getByLabelText('Hapus bukti'))
+    const input = (await waitFor(() => document.querySelector('#tx-form input[type="file"]'))) as HTMLInputElement
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'new.jpg', { type: 'image/jpeg' })] },
+    })
+
+    await act(async () => {
+      fireEvent.submit(form())
+    })
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ receipt_url: 'user-1/tx-1/old.jpg' }),
+    )
+    expect(mocks.removeReceipt).not.toHaveBeenCalled()
+    expect(await screen.findByText('Ukuran file maksimal 5 MB')).toBeInTheDocument()
+  })
+
+  it('maps a create upload failure to an Indonesian toast and keeps the modal open', async () => {
+    mocks.uploadReceipt.mockRejectedValue(new Error('The resource already exists'))
+    const { onClose } = renderForm()
+    fireEvent.change(screen.getByLabelText('Jumlah (Rp)'), { target: { value: '50000' } })
+    fireEvent.change(screen.getByLabelText('Kategori'), { target: { value: 'cat-ex-1' } })
+    const chain = makeCreateChain()
+    mocks.from.mockReturnValue(chain)
+    fireEvent.change(document.querySelector('#tx-form input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['x'], 'struk.jpg', { type: 'image/jpeg' })] },
+    })
+
+    await act(async () => {
+      fireEvent.submit(form())
+    })
+
+    expect(await screen.findByText('File sudah ada. Coba beberapa saat lagi.')).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('does not invalidate queries when a create fails during upload', async () => {
+    mocks.uploadReceipt.mockRejectedValue(new Error('network down'))
+    const { client } = renderForm()
+    client.setQueryData(['accounts', 'user-1'], accounts)
+    fireEvent.change(screen.getByLabelText('Jumlah (Rp)'), { target: { value: '50000' } })
+    fireEvent.change(screen.getByLabelText('Kategori'), { target: { value: 'cat-ex-1' } })
+    const chain = makeCreateChain()
+    mocks.from.mockReturnValue(chain)
+    fireEvent.change(document.querySelector('#tx-form input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['x'], 'struk.jpg', { type: 'image/jpeg' })] },
+    })
+
+    await act(async () => {
+      fireEvent.submit(form())
+    })
+
+    expect(client.getQueryState(['accounts', 'user-1'])?.isInvalidated).not.toBe(true)
   })
 })

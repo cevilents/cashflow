@@ -15,6 +15,7 @@ import { parseAmountInput, formatRupiah } from '../../lib/format'
 import { todayISO } from '../../lib/dates'
 import { uploadReceipt, removeReceipt } from '../receipt/receiptStorage'
 import { ReceiptUpload } from '../receipt/ReceiptUpload'
+import { transactionErrorMessage } from '../../lib/transactionErrors'
 import type { Transaction, TransactionType } from '../../types/database'
 
 export function TransactionForm({
@@ -51,6 +52,21 @@ export function TransactionForm({
     [categories, type],
   )
 
+  const onTypeChange = (t: TransactionType) => {
+    setType(t)
+    setErrors({})
+    if (t !== 'transfer' && t !== type) {
+      setCategoryId((prev) =>
+        (categories ?? []).some((c) => c.id === prev && c.type === (t === 'income' ? 'income' : 'expense')) ? prev : '',
+      )
+    }
+    if (t === 'transfer') {
+      setCategoryId('')
+      setReceiptFile(null)
+      if (receiptPath && receiptPath.startsWith('blob:')) setReceiptPath(null)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
     if (editing) {
@@ -82,13 +98,15 @@ export function TransactionForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!user) return
+    const wantsTransfer = type === 'transfer'
     const amount = parseAmountInput(amountRaw)
+    const hasValidCategory = wantsTransfer || typeCategories.some((c) => c.id === categoryId)
     const problems: Record<string, string> = {}
     if (amount === null) problems.amount = 'Masukkan jumlah yang valid'
     if (!accountId) problems.accountId = 'Pilih akun'
-    if (type !== 'transfer' && !categoryId) problems.categoryId = 'Pilih kategori'
-    if (type === 'transfer' && !toAccountId) problems.toAccountId = 'Pilih akun tujuan'
-    if (type === 'transfer' && toAccountId === accountId) problems.toAccountId = 'Akun tujuan tidak boleh sama'
+    if (!wantsTransfer && !hasValidCategory) problems.categoryId = 'Pilih kategori'
+    if (wantsTransfer && !toAccountId) problems.toAccountId = 'Pilih akun tujuan'
+    if (wantsTransfer && toAccountId === accountId) problems.toAccountId = 'Akun tujuan tidak boleh sama'
     if (!date) problems.date = 'Pilih tanggal'
     setErrors(problems)
     if (Object.keys(problems).length > 0 || amount === null) return
@@ -98,23 +116,27 @@ export function TransactionForm({
       const base: TransactionInput = {
         account_id: accountId,
         type,
-        category_id: type === 'transfer' ? null : categoryId || null,
+        category_id: wantsTransfer ? null : categoryId || null,
         amount,
-        to_account_id: type === 'transfer' ? toAccountId : null,
+        to_account_id: wantsTransfer ? toAccountId : null,
         note,
         date,
-        receipt_url: type === 'transfer' ? null : receiptPath ?? null,
+        receipt_url: wantsTransfer || receiptFile ? null : receiptPath ?? null,
       }
 
       if (editing) {
         const oldReceipt = editing.receipt_url
-        await updateTx.mutateAsync({ id: editing.id, ...base })
-        if (receiptFile && oldReceipt) await removeReceipt(oldReceipt)
-        if (receiptFile) {
+        if (wantsTransfer) {
+          await updateTx.mutateAsync({ id: editing.id, ...base })
+          if (oldReceipt) await removeReceipt(oldReceipt)
+        } else if (receiptFile) {
+          await updateTx.mutateAsync({ id: editing.id, ...base, receipt_url: oldReceipt })
           const finalPath = await uploadReceipt(receiptFile, user.id, editing.id)
           await supabase.from('transactions').update({ receipt_url: finalPath }).eq('id', editing.id)
-        } else if (receiptPath === null && oldReceipt) {
-          await removeReceipt(oldReceipt)
+          if (oldReceipt) await removeReceipt(oldReceipt)
+        } else {
+          await updateTx.mutateAsync({ id: editing.id, ...base })
+          if (receiptPath === null && oldReceipt) await removeReceipt(oldReceipt)
         }
         toast('Transaksi diperbarui')
       } else {
@@ -124,7 +146,7 @@ export function TransactionForm({
           .select('id')
           .single()
         if (error) throw error
-        if (receiptFile) {
+        if (receiptFile && !wantsTransfer) {
           const finalPath = await uploadReceipt(receiptFile, user.id, data.id)
           await supabase.from('transactions').update({ receipt_url: finalPath }).eq('id', data.id)
         }
@@ -134,7 +156,7 @@ export function TransactionForm({
       }
       onClose()
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Gagal menyimpan transaksi', 'error')
+      toast(transactionErrorMessage(err), 'error')
     } finally {
       setSaving(false)
     }
@@ -158,7 +180,7 @@ export function TransactionForm({
             <button
               key={t}
               type="button"
-              onClick={() => setType(t)}
+              onClick={() => onTypeChange(t)}
               className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
                 type === t
                   ? t === 'expense' ? 'border-bad bg-bad/15 text-bad'
