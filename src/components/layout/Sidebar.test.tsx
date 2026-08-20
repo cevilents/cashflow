@@ -6,7 +6,19 @@ import AppLayout from './AppLayout'
 const mocks = vi.hoisted(() => ({
   user: { id: 'user-1', email: 'user@example.com' },
   logout: vi.fn(),
-  profile: { full_name: 'Budi', currency: 'IDR' } as { full_name: string; currency: string } | null,
+  currentMember: {
+    id: 'user-1',
+    name: 'Bima',
+    email: 'bima@cashflow.local',
+    color: '#10b981',
+    icon: 'bima',
+  } as {
+    id: string
+    name: string
+    email: string
+    color: string
+    icon: string
+  } | null,
 }))
 
 vi.mock('../../hooks/useAuth', () => ({
@@ -17,8 +29,8 @@ vi.mock('../../hooks/useAuth', () => ({
   }),
 }))
 
-vi.mock('../../hooks/useProfile', () => ({
-  useProfile: () => ({ data: mocks.profile }),
+vi.mock('../../hooks/useReadOnly', () => ({
+  useCurrentMember: () => mocks.currentMember,
 }))
 
 const navLabels = ['Dashboard', 'Transaksi', 'Akun', 'Kategori', 'Berulang']
@@ -46,6 +58,13 @@ describe('AppLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.logout.mockResolvedValue(undefined)
+    mocks.currentMember = {
+      id: 'user-1',
+      name: 'Bima',
+      email: 'bima@cashflow.local',
+      color: '#10b981',
+      icon: 'bima',
+    }
   })
 
   afterEach(cleanup)
@@ -116,17 +135,17 @@ describe('AppLayout', () => {
     expect(button.className).toContain('md:hidden')
   })
 
-  it('shows the profile display name and email in the sidebar', () => {
+  it('shows the current member name and uses its color for the avatar', () => {
     renderLayout('/')
-    expect(screen.getByText('Budi')).toBeInTheDocument()
-    expect(screen.getByText('user@example.com')).toBeInTheDocument()
+    expect(screen.getByText('Bima')).toBeInTheDocument()
+    const avatar = document.querySelector('aside .rounded-full') as HTMLElement
+    expect(avatar.style.backgroundColor).toBe('rgb(16, 185, 129)')
   })
 
-  it('falls back to the email when the profile has no display name', () => {
-    mocks.profile = null
+  it('falls back to the email when there is no current member', () => {
+    mocks.currentMember = null
     renderLayout('/')
     expect(screen.getByText('user@example.com')).toBeInTheDocument()
-    mocks.profile = { full_name: 'Budi', currency: 'IDR' }
   })
 
   it('calls logout and navigates to the login page', async () => {

@@ -11,7 +11,8 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { useProfile } from '../../hooks/useProfile'
+import { useCurrentMember } from '../../hooks/useReadOnly'
+import { memberInitials } from '../../lib/members'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,10 +28,10 @@ const mobileNav = nav.slice(0, 5)
 
 export function Sidebar() {
   const { user, logout } = useAuth()
-  const { data: profile } = useProfile()
+  const current = useCurrentMember()
   const navigate = useNavigate()
-  const displayName = profile?.full_name || user?.email || ''
-  const initials = (displayName || '?').slice(0, 2).toUpperCase()
+  const displayName = current?.name ?? user?.email ?? ''
+  const initials = memberInitials(displayName || '?')
 
   const handleLogout = async () => {
     await logout()
@@ -66,12 +67,16 @@ export function Sidebar() {
 
       <div className="border-t border-border-subtle px-3 py-4">
         <div className="flex items-center gap-2 rounded-xl px-2 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-soft text-xs font-bold text-ink">
+          <div
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-ink ${
+              current?.color ? '' : 'bg-surface-soft'
+            }`}
+            style={current?.color ? { backgroundColor: current.color } : undefined}
+          >
             {initials}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-ink">{displayName}</p>
-            {profile?.full_name ? <p className="truncate text-xs text-ink-muted">{user?.email}</p> : null}
           </div>
         </div>
         <button
