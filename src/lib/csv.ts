@@ -1,4 +1,6 @@
 import type { Account, Category, Transaction } from '../types/database'
+import type { Member } from './members'
+import { getMemberById } from './members'
 
 export function toCSV(rows: (string | number)[][]): string {
   return rows
@@ -18,13 +20,22 @@ export function downloadFile(filename: string, content: string, type = 'text/csv
   URL.revokeObjectURL(url)
 }
 
-export const REPORT_HEADER: string[] = ['Tanggal', 'Tipe', 'Akun', 'Kategori', 'Jumlah', 'Catatan']
+export const REPORT_HEADER: string[] = [
+  'Tanggal',
+  'Tipe',
+  'Akun',
+  'Kategori',
+  'Jumlah',
+  'Catatan',
+  'Pemilik',
+]
 
 export function buildReportRows(
   transactions: Transaction[],
   accounts: Account[],
   categories: Category[],
   month: string,
+  members: Member[],
 ): (string | number)[][] {
   const accountsById = new Map(accounts.map((a) => [a.id, a]))
   const categoriesById = new Map(categories.map((c) => [c.id, c]))
@@ -37,5 +48,6 @@ export function buildReportRows(
       t.category_id ? categoriesById.get(t.category_id)?.name ?? '' : '',
       t.type === 'income' ? Number(t.amount) : -Number(t.amount),
       t.note,
+      getMemberById(t.user_id, members)?.name ?? '',
     ])
 }

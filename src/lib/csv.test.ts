@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { toCSV, downloadFile, buildReportRows, REPORT_HEADER } from './csv'
 import type { Account, Category, Transaction } from '../types/database'
+import type { Member } from './members'
 
 describe('toCSV', () => {
   it('joins rows with newlines and cells with commas', () => {
@@ -77,15 +78,19 @@ describe('buildReportRows', () => {
       [account],
       categories,
       '2026-08',
+      [],
     )
-    expect(REPORT_HEADER).toEqual(['Tanggal', 'Tipe', 'Akun', 'Kategori', 'Jumlah', 'Catatan'])
+    expect(REPORT_HEADER).toEqual(['Tanggal', 'Tipe', 'Akun', 'Kategori', 'Jumlah', 'Catatan', 'Pemilik'])
     const full = [REPORT_HEADER, ...rows]
     expect(toCSV(full)).toBe(
-      '"Tanggal","Tipe","Akun","Kategori","Jumlah","Catatan"\n"2026-08-01","Pemasukan","Tunai","","100000","Gaji"',
+      '"Tanggal","Tipe","Akun","Kategori","Jumlah","Catatan","Pemilik"\n"2026-08-01","Pemasukan","Tunai","","100000","Gaji",""',
     )
   })
 
   it('resolves account and category names and signs income positive expense negative', () => {
+    const members: Member[] = [
+      { id: 'u', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima' },
+    ]
     const rows = buildReportRows(
       [
         makeTx({ id: '1', type: 'income', amount: 50000, category_id: null, date: '2026-08-01' }),
@@ -95,11 +100,12 @@ describe('buildReportRows', () => {
       [account],
       categories,
       '2026-08',
+      members,
     )
     expect(rows).toEqual([
-      ['2026-08-01', 'Pemasukan', 'Tunai', '', 50000, ''],
-      ['2026-08-02', 'Pengeluaran', 'Tunai', 'Makanan', -15000, ''],
-      ['2026-08-03', 'Transfer', 'Tunai', '', -7000, ''],
+      ['2026-08-01', 'Pemasukan', 'Tunai', '', 50000, '', 'Bima'],
+      ['2026-08-02', 'Pengeluaran', 'Tunai', 'Makanan', -15000, '', 'Bima'],
+      ['2026-08-03', 'Transfer', 'Tunai', '', -7000, '', 'Bima'],
     ])
   })
 
@@ -109,6 +115,7 @@ describe('buildReportRows', () => {
       [account],
       categories,
       '2026-08',
+      [],
     )
     expect(toCSV([REPORT_HEADER, ...rows])).toContain('"a,""b"",c"')
   })
@@ -119,6 +126,7 @@ describe('buildReportRows', () => {
       [account],
       categories,
       '2026-08',
+      [],
     )
     expect(rows).toEqual([])
   })

@@ -44,7 +44,7 @@ export default function ReportsPage() {
   )
 
   const exportCsv = () => {
-    const rows = buildReportRows(filteredTransactions, accounts ?? [], categories ?? [], month)
+    const rows = buildReportRows(filteredTransactions, accounts ?? [], categories ?? [], month, members ?? [])
     downloadFile(`cashflow-${month}.csv`, toCSV([REPORT_HEADER, ...rows]))
   }
 

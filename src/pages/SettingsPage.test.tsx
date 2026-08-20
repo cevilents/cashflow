@@ -5,10 +5,11 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '../components/ui/Toast'
 import SettingsPage from './SettingsPage'
 import { createQueryClient, makeQueryChain } from '../test/queryTestUtils'
-import type { Account, Category, Profile, RecurringTransaction, Transaction } from '../types/database'
+import type { Account, Category, RecurringTransaction, Transaction } from '../types/database'
+import type { Member } from '../lib/members'
 
 const mocks = vi.hoisted(() => ({
-  user: { id: 'user-1', email: 'budi@mail.com' },
+  user: { id: 'user-1', email: 'bima@cashflow.local' },
   logout: vi.fn(),
   from: vi.fn(),
   downloadFile: vi.fn(),
@@ -27,12 +28,21 @@ vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ user: mocks.user, logout: mocks.logout }),
 }))
 
-const profile: Profile = {
+const currentMember: Member = {
   id: 'user-1',
-  full_name: 'Budi',
-  currency: 'IDR',
-  created_at: '2026-01-01T00:00:00Z',
+  name: 'Bima',
+  email: 'bima@cashflow.local',
+  color: '#10b981',
+  icon: 'bima',
 }
+
+vi.mock('../hooks/useMembers', () => ({
+  useMembers: () => ({ data: [currentMember] }),
+}))
+
+vi.mock('../hooks/useReadOnly', () => ({
+  useCurrentMember: () => currentMember,
+}))
 
 const account: Account = {
   id: 'acc-1', user_id: 'user-1', name: 'Dompet', type: 'cash', opening_balance: 0,
@@ -59,23 +69,19 @@ function installMock() {
       const chain = makeQueryChain()
       mocks.chains[table] = chain
       chain.upsert.mockResolvedValue({ error: null })
-      if (table === 'profiles') {
-        chain.maybeSingle.mockResolvedValue({ data: profile, error: null })
+      const data =
+        table === 'accounts' ? [account]
+        : table === 'categories' ? [category]
+        : table === 'transactions' ? [transaction]
+        : [recurring]
+      if (table === 'transactions') {
+        chain.order.mockImplementation((col: unknown) =>
+          col === 'date' ? chain : Promise.resolve({ data, error: null }),
+        )
       } else {
-        const data =
-          table === 'accounts' ? [account]
-          : table === 'categories' ? [category]
-          : table === 'transactions' ? [transaction]
-          : [recurring]
-        if (table === 'transactions') {
-          chain.order.mockImplementation((col: unknown) =>
-            col === 'date' ? chain : Promise.resolve({ data, error: null }),
-          )
-        } else {
-          chain.order.mockResolvedValue({ data, error: null })
-        }
-        chain.eq.mockResolvedValue({ error: null })
+        chain.order.mockResolvedValue({ data, error: null })
       }
+      chain.eq.mockResolvedValue({ error: null })
     }
     return mocks.chains[table]
   })
@@ -94,7 +100,10 @@ function renderPage() {
 }
 
 async function awaitData() {
-  await screen.findByDisplayValue('Budi')
+  await screen.findByText('Bima')
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
 }
 
 describe('SettingsPage', () => {
@@ -106,35 +115,11 @@ describe('SettingsPage', () => {
 
   afterEach(cleanup)
 
-  it('shows the profile form with the name prefilled and the email read-only', async () => {
+  it('shows the current member identity read-only (member name + email)', async () => {
     renderPage()
     await awaitData()
-    expect(screen.getByLabelText('Nama')).toHaveValue('Budi')
-    expect(screen.getByLabelText('Email')).toHaveValue('budi@mail.com')
-    expect(screen.getByLabelText('Email')).toBeDisabled()
-  })
-
-  it('saves the profile name and shows a success toast', async () => {
-    renderPage()
-    await awaitData()
-    fireEvent.change(screen.getByLabelText('Nama'), { target: { value: 'Budi Santoso' } })
-    await act(async () => {
-      fireEvent.submit(screen.getByRole('button', { name: 'Simpan' }).closest('form') as HTMLFormElement)
-    })
-    const profiles = mocks.chains['profiles']
-    expect(profiles?.update).toHaveBeenCalledWith({ full_name: 'Budi Santoso', currency: 'IDR' })
-    expect(await screen.findByText('Nama diperbarui')).toBeInTheDocument()
-  })
-
-  it('rejects saving an empty profile name', async () => {
-    renderPage()
-    await awaitData()
-    fireEvent.change(screen.getByLabelText('Nama'), { target: { value: '   ' } })
-    await act(async () => {
-      fireEvent.submit(screen.getByRole('button', { name: 'Simpan' }).closest('form') as HTMLFormElement)
-    })
-    expect(await screen.findByText('Nama tidak boleh kosong')).toBeInTheDocument()
-    expect(mocks.chains['profiles']?.update).not.toHaveBeenCalled()
+    expect(screen.getByText('Bima')).toBeInTheDocument()
+    expect(screen.getByText('bima@cashflow.local')).toBeInTheDocument()
   })
 
   it('exports a backup JSON carrying version, user id, and all data', async () => {

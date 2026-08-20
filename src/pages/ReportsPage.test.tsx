@@ -139,9 +139,10 @@ describe('ReportsPage', () => {
     expect(mocks.downloadFile).toHaveBeenCalledTimes(1)
     const [filename, content] = mocks.downloadFile.mock.calls[0] as [string, string]
     expect(filename).toBe(`cashflow-${month}.csv`)
-    expect(content).toContain('"Tanggal","Tipe","Akun","Kategori","Jumlah","Catatan"')
+    expect(content).toContain('"Tanggal","Tipe","Akun","Kategori","Jumlah","Catatan","Pemilik"')
     expect(content).toContain('"Pemasukan"')
     expect(content).toContain('"Pengeluaran"')
+    expect(content).toContain('"Bima"')
   })
 
   it('narrows the report to the selected owner', async () => {
