@@ -31,3 +31,6 @@ dist-ssr
 # browser test artifacts (playwright-mcp)
 .playwright-mcp/
 *.png
+!public/pwa-*.png
+!public/apple-touch-icon.png
+!public/favicon.svg
