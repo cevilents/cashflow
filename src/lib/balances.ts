@@ -23,3 +23,20 @@ export function computeAccountBalances(
 export function totalBalance(balances: Record<string, number>): number {
   return Object.values(balances).reduce((sum, v) => sum + v, 0)
 }
+
+export function totalBalanceByMember(
+  balances: Record<string, number>,
+  accounts: Account[],
+  members: { id: string; name: string; color: string }[],
+) {
+  const totals = new Map<string, number>()
+  for (const acc of accounts) {
+    totals.set(acc.user_id, (totals.get(acc.user_id) ?? 0) + (balances[acc.id] ?? 0))
+  }
+  return members.map((m) => ({
+    memberId: m.id,
+    name: m.name,
+    color: m.color,
+    total: totals.get(m.id) ?? 0,
+  }))
+}

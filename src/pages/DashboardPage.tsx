@@ -7,13 +7,15 @@ import {
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 import { useCategories } from '../hooks/useCategories'
-import { computeAccountBalances, totalBalance } from '../lib/balances'
+import { computeAccountBalances, totalBalance, totalBalanceByMember } from '../lib/balances'
 import { formatRupiah } from '../lib/format'
 import { buildMonthlySeries, buildCategoryBreakdown, recentTransactions } from '../lib/dashboard'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { EmptyState } from '../components/ui/EmptyState'
 import { TransactionForm } from '../components/transaction/TransactionForm'
+import { MemberFilter, type OwnerFilter } from '../components/layout/MemberFilter'
+import { useMembers } from '../hooks/useMembers'
 
 const AXIS_STROKE = '#8ea0c3'
 const TOOLTIP_STYLE = { background: '#111a2e', border: '1px solid #233052', borderRadius: 12 }
@@ -22,22 +24,34 @@ export default function DashboardPage() {
   const { data: transactions, isLoading } = useTransactions()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
+  const { data: members } = useMembers()
   const [formOpen, setFormOpen] = useState(false)
+  const [owner, setOwner] = useState<OwnerFilter>('all')
 
   const txs = useMemo(() => transactions ?? [], [transactions])
+  const memberList = useMemo(() => members ?? [], [members])
+
+  const filteredTxs = useMemo(
+    () => (owner === 'all' ? txs : txs.filter((t) => t.user_id === owner)),
+    [txs, owner],
+  )
 
   const balances = useMemo(
     () => computeAccountBalances(accounts ?? [], txs),
     [accounts, txs],
   )
   const total = useMemo(() => totalBalance(balances), [balances])
-
-  const monthly = useMemo(() => buildMonthlySeries(txs), [txs])
-  const categoryBreakdown = useMemo(
-    () => buildCategoryBreakdown(txs, categories ?? []),
-    [txs, categories],
+  const memberCards = useMemo(
+    () => totalBalanceByMember(balances, accounts ?? [], memberList.map(({ id, name, color }) => ({ id, name, color }))),
+    [balances, accounts, memberList],
   )
-  const recent = useMemo(() => recentTransactions(txs), [txs])
+
+  const monthly = useMemo(() => buildMonthlySeries(filteredTxs), [filteredTxs])
+  const categoryBreakdown = useMemo(
+    () => buildCategoryBreakdown(filteredTxs, categories ?? []),
+    [filteredTxs, categories],
+  )
+  const recent = useMemo(() => recentTransactions(filteredTxs), [filteredTxs])
 
   const accountsById = useMemo(() => Object.fromEntries((accounts ?? []).map((a) => [a.id, a])), [accounts])
   const categoriesById = useMemo(() => Object.fromEntries((categories ?? []).map((c) => [c.id, c])), [categories])
@@ -66,6 +80,10 @@ export default function DashboardPage() {
         </Button>
       </div>
 
+      {memberList.length > 0 && (
+        <MemberFilter value={owner} onChange={setOwner} />
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-border-subtle bg-surface-card p-5">
           <p className="flex items-center gap-2 text-sm text-ink-muted"><Wallet className="h-4 w-4" /> Total Saldo</p>
@@ -80,6 +98,20 @@ export default function DashboardPage() {
           <p className="mt-2 text-2xl font-bold text-bad tabular">{formatRupiah(monthExpense)}</p>
         </div>
       </div>
+
+      {memberList.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {memberCards.map((card) => (
+            <div key={card.memberId} className="rounded-2xl border border-border-subtle bg-surface-card p-5">
+              <p className="flex items-center gap-2 text-sm text-ink-muted">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: card.color }} />
+                Uang di {card.name}
+              </p>
+              <p className="mt-2 text-2xl font-bold text-ink tabular">{formatRupiah(card.total)}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-border-subtle bg-surface-card p-5">

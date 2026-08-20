@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { computeAccountBalances, totalBalance } from './balances'
+import { computeAccountBalances, totalBalance, totalBalanceByMember } from './balances'
 import type { Account, Transaction } from '../types/database'
 
-const acc = (id: string, opening = 0): Account => ({
-  id, user_id: 'u', name: id, type: 'cash', opening_balance: opening,
+const acc = (id: string, opening = 0, userId = 'u'): Account => ({
+  id, user_id: userId, name: id, type: 'cash', opening_balance: opening,
   color: '#000', is_archived: false, created_at: '',
 })
 const tx = (partial: Partial<Transaction>): Transaction => ({
@@ -45,5 +45,30 @@ describe('computeAccountBalances', () => {
 describe('totalBalance', () => {
   it('sums all balances', () => {
     expect(totalBalance({ a: 100, b: -30 })).toBe(70)
+  })
+})
+
+describe('totalBalanceByMember', () => {
+  it('groups account balances by member and returns member rows', () => {
+    const accounts = [acc('acc-a', 100, 'a'), acc('acc-b', 50, 'b')]
+    const balances = computeAccountBalances(accounts, [])
+    const members = [
+      { id: 'a', name: 'Bima', color: '#10b981' },
+      { id: 'b', name: 'Aska', color: '#6366f1' },
+    ]
+    const result = totalBalanceByMember(balances, accounts, members)
+    expect(result).toEqual([
+      { memberId: 'a', name: 'Bima', color: '#10b981', total: 100 },
+      { memberId: 'b', name: 'Aska', color: '#6366f1', total: 50 },
+    ])
+    expect(result.reduce((sum, r) => sum + r.total, 0)).toBe(totalBalance(balances))
+  })
+  it('returns zero for members without accounts', () => {
+    const accounts = [acc('acc-a', 100, 'a')]
+    const balances = computeAccountBalances(accounts, [])
+    const members = [{ id: 'a', name: 'Bima', color: '#10b981' }, { id: 'c', name: 'Nanda', color: '#f59e0b' }]
+    const result = totalBalanceByMember(balances, accounts, members)
+    expect(result.find((r) => r.memberId === 'a')?.total).toBe(100)
+    expect(result.find((r) => r.memberId === 'c')?.total).toBe(0)
   })
 })
