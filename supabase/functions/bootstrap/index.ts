@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  let body: { passwords?: Record<string, string> } = {}
+  let body: { passwords?: Record<string, string> }
   try {
     body = await req.json()
   } catch {
