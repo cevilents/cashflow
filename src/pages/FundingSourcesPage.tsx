@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Plus, ArrowDownToLine, Pencil, Archive, Trash2 } from 'lucide-react'
+import { Plus, PlusCircle, ArrowDownToLine, Pencil, Archive, Trash2 } from 'lucide-react'
 import { useAccounts, useDeleteAccount, useUpdateAccount } from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
 import { useMembers } from '../hooks/useMembers'
-import { useReadOnly, useCurrentMember } from '../hooks/useReadOnly'
+import { useFundingTransactions } from '../hooks/useFundingTransactions'
 import { computeAccountBalances, totalFundingBalance } from '../lib/balances'
 import { isFundingAccount } from '../lib/accounts'
 import { formatRupiah } from '../lib/format'
@@ -11,6 +11,7 @@ import { getMemberById } from '../lib/members'
 import type { Member } from '../lib/members'
 import { AccountForm } from '../components/account/AccountForm'
 import { FundingTransferModal } from '../components/account/FundingTransferModal'
+import { FundingAdjustmentModal } from '../components/account/FundingAdjustmentModal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
@@ -18,20 +19,21 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { useToast } from '../components/ui/Toast'
 import { MemberFilter } from '../components/layout/MemberFilter'
 import type { OwnerFilter } from '../components/layout/MemberFilter'
-import type { Account } from '../types/database'
+import type { Account, FundingTransaction } from '../types/database'
 
 interface SourceCardProps {
   account: Account
   balances: Record<string, number>
   members: Member[]
+  history: FundingTransaction[]
   onEdit: (a: Account) => void
   onToggleArchive: (a: Account) => void
   onDelete: (a: Account) => void
   onTransfer: (a: Account) => void
+  onAdjust: (a: Account) => void
 }
 
-function SourceCard({ account, balances, members, onEdit, onToggleArchive, onDelete, onTransfer }: SourceCardProps) {
-  const readOnly = useReadOnly(account.user_id)
+function SourceCard({ account, balances, members, history, onEdit, onToggleArchive, onDelete, onTransfer, onAdjust }: SourceCardProps) {
   const member = getMemberById(account.user_id, members)
   return (
     <div className="rounded-2xl border border-border-subtle bg-surface-card p-5">
@@ -48,23 +50,34 @@ function SourceCard({ account, balances, members, onEdit, onToggleArchive, onDel
       </div>
       <p className="mt-3 text-2xl font-bold text-ink tabular">{formatRupiah(balances[account.id] ?? 0)}</p>
       <div className="mt-4 flex items-center justify-end">
-        {!readOnly && (
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={() => onTransfer(account)} aria-label="Transfer">
-              <ArrowDownToLine className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onEdit(account)} aria-label="Ubah">
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onToggleArchive(account)} aria-label={account.is_archived ? 'Aktifkan' : 'Arsipkan'}>
-              <Archive className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onDelete(account)} aria-label="Hapus" className="text-bad">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onAdjust(account)} aria-label="Penyesuaian">
+            <PlusCircle className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onTransfer(account)} aria-label="Transfer">
+            <ArrowDownToLine className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onEdit(account)} aria-label="Ubah">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onToggleArchive(account)} aria-label={account.is_archived ? 'Aktifkan' : 'Arsipkan'}>
+            <Archive className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(account)} aria-label="Hapus" className="text-bad">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
+      {history.length > 0 && (
+        <ul className="mt-3 space-y-1 border-t border-border-subtle pt-3 text-xs text-ink-muted">
+          {history.slice(0, 3).map((h) => (
+            <li key={h.id} className="flex justify-between">
+              <span>{h.date}</span>
+              <span className="tabular">{h.amount >= 0 ? '+' : ''}{formatRupiah(h.amount)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -72,8 +85,8 @@ function SourceCard({ account, balances, members, onEdit, onToggleArchive, onDel
 export default function FundingSourcesPage() {
   const { data: accounts, isLoading } = useAccounts()
   const { data: transactions } = useTransactions()
+  const { data: fundingTransactions } = useFundingTransactions()
   const { data: members } = useMembers()
-  const currentMember = useCurrentMember()
   const deleteAcc = useDeleteAccount()
   const archiveAcc = useUpdateAccount()
   const { toast } = useToast()
@@ -82,12 +95,21 @@ export default function FundingSourcesPage() {
   const [editing, setEditing] = useState<Account | null>(null)
   const [deleting, setDeleting] = useState<Account | null>(null)
   const [transferSource, setTransferSource] = useState<Account | null>(null)
+  const [adjustSource, setAdjustSource] = useState<Account | null>(null)
   const [owner, setOwner] = useState<OwnerFilter>('all')
 
   const balances = useMemo(
-    () => computeAccountBalances(accounts ?? [], transactions ?? []),
-    [accounts, transactions],
+    () => computeAccountBalances(accounts ?? [], transactions ?? [], fundingTransactions ?? []),
+    [accounts, transactions, fundingTransactions],
   )
+
+  const historyByAccount = useMemo(() => {
+    const map: Record<string, FundingTransaction[]> = {}
+    for (const f of fundingTransactions ?? []) {
+      ;(map[f.account_id] ||= []).push(f)
+    }
+    return map
+  }, [fundingTransactions])
 
   const txCountByAccount = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -110,8 +132,9 @@ export default function FundingSourcesPage() {
 
   const confirmDelete = async () => {
     if (!deleting) return
-    if ((txCountByAccount[deleting.id] ?? 0) > 0) {
-      toast('Sumber dana ini punya transaksi — arsipkan saja, tidak bisa dihapus', 'error')
+    const hasAdjustments = (fundingTransactions ?? []).some((f) => f.account_id === deleting.id)
+    if ((txCountByAccount[deleting.id] ?? 0) > 0 || hasAdjustments) {
+      toast('Sumber dana ini punya aktivitas — arsipkan saja, tidak bisa dihapus', 'error')
       setDeleting(null)
       return
     }
@@ -138,8 +161,6 @@ export default function FundingSourcesPage() {
     return <div className="flex items-center justify-center py-20"><Spinner size={28} /></div>
   }
 
-  const canManage = owner === 'all' || owner === currentMember?.id
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -147,11 +168,9 @@ export default function FundingSourcesPage() {
           <h1 className="text-xl font-bold text-ink">Sumber Dana</h1>
           <p className="text-sm text-ink-muted">Saldo sumber dana dan transfer ke akun</p>
         </div>
-        {canManage && (
-          <Button onClick={() => { setEditing(null); setFormOpen(true) }}>
-            <Plus className="h-4 w-4" /> Tambah Sumber Dana
-          </Button>
-        )}
+        <Button onClick={() => { setEditing(null); setFormOpen(true) }}>
+          <Plus className="h-4 w-4" /> Tambah Sumber Dana
+        </Button>
       </div>
 
       <MemberFilter value={owner} onChange={setOwner} />
@@ -171,10 +190,12 @@ export default function FundingSourcesPage() {
               account={a}
               balances={balances}
               members={members ?? []}
+              history={historyByAccount[a.id] ?? []}
               onEdit={openEdit}
               onToggleArchive={toggleArchive}
               onDelete={setDeleting}
               onTransfer={setTransferSource}
+              onAdjust={setAdjustSource}
             />
           ))}
         </div>
@@ -185,7 +206,7 @@ export default function FundingSourcesPage() {
           <h2 className="text-sm font-semibold text-ink-muted">Diarsipkan</h2>
           <div className="grid grid-cols-1 gap-4 opacity-70 sm:grid-cols-2 lg:grid-cols-3">
             {archived.map((a) => (
-              <SourceCard key={a.id} account={a} balances={balances} members={members ?? []} onEdit={openEdit} onToggleArchive={toggleArchive} onDelete={setDeleting} onTransfer={setTransferSource} />
+              <SourceCard key={a.id} account={a} balances={balances} members={members ?? []} history={historyByAccount[a.id] ?? []} onEdit={openEdit} onToggleArchive={toggleArchive} onDelete={setDeleting} onTransfer={setTransferSource} onAdjust={setAdjustSource} />
             ))}
           </div>
         </div>
@@ -193,6 +214,7 @@ export default function FundingSourcesPage() {
 
       <AccountForm open={formOpen} onClose={() => setFormOpen(false)} editing={editing} lockType="funding" />
       <FundingTransferModal open={transferSource !== null} onClose={() => setTransferSource(null)} source={transferSource} />
+      <FundingAdjustmentModal open={adjustSource !== null} onClose={() => setAdjustSource(null)} source={adjustSource} />
       <ConfirmDialog
         open={deleting !== null}
         title="Hapus sumber dana?"

@@ -1,11 +1,12 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '../components/ui/Toast'
 import FundingSourcesPage from './FundingSourcesPage'
 import { createQueryClient, makeQueryChain } from '../test/queryTestUtils'
-import type { Account, Transaction } from '../types/database'
+import { todayISO } from '../lib/dates'
+import type { Account, Transaction, FundingTransaction } from '../types/database'
 import type { Member } from '../lib/members'
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   accounts: [] as Account[],
   transactions: [] as Transaction[],
+  fundingTransactions: [] as FundingTransaction[],
   chains: {} as Record<string, ReturnType<typeof makeQueryChain>>,
   members: [] as Member[],
 }))
@@ -29,7 +31,10 @@ function installMock() {
     if (!mocks.chains[table]) {
       const chain = makeQueryChain()
       mocks.chains[table] = chain
-      if (table === 'accounts') {
+      if (table === 'funding_transactions') {
+        ;(chain as unknown as { data: FundingTransaction[] }).data = mocks.fundingTransactions
+        chain.insert.mockResolvedValue({ error: null })
+      } else if (table === 'accounts') {
         chain.order.mockResolvedValue({ data: mocks.accounts, error: null })
       } else {
         chain.order.mockImplementation((col: unknown) =>
@@ -57,12 +62,17 @@ function renderPage() {
   return { client, ...view }
 }
 
+function cardFor(name: string): HTMLElement {
+  return screen.getByText(name).closest('div.rounded-2xl') as HTMLElement
+}
+
 describe('FundingSourcesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.members = [
       { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
     ]
+    mocks.fundingTransactions = []
     mocks.chains = {}
     installMock()
   })
@@ -97,11 +107,11 @@ describe('FundingSourcesPage', () => {
     mocks.accounts = [funding]
     renderPage()
     await screen.findByText('IB HFM')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Transfer' }).find((b) => b.closest('div.rounded-2xl')?.textContent?.includes('IB HFM')) as HTMLButtonElement)
+    fireEvent.click(within(cardFor('IB HFM')).getByRole('button', { name: 'Transfer' }))
     expect(await screen.findByText('Transfer dari Sumber Dana')).toBeInTheDocument()
   })
 
-  it('hides action buttons for funding sources owned by another member', async () => {
+  it('shows action buttons for every funding source regardless of owner', async () => {
     mocks.members = [
       { id: 'user-1', name: 'Bima', email: 'bima@cashflow.local', color: '#10b981', icon: 'bima', password_set: true },
       { id: 'user-2', name: 'Aska', email: 'aska@cashflow.local', color: '#6366f1', icon: 'aska', password_set: true },
@@ -113,16 +123,46 @@ describe('FundingSourcesPage', () => {
     renderPage()
     await screen.findByText('IB HFM')
 
-    const ownCard = screen.getByText('IB HFM').closest('div.rounded-2xl') as HTMLElement
-    expect(within(ownCard).getByRole('button', { name: 'Transfer' })).toBeInTheDocument()
-    expect(within(ownCard).getByRole('button', { name: 'Ubah' })).toBeInTheDocument()
-    expect(within(ownCard).getByRole('button', { name: 'Arsipkan' })).toBeInTheDocument()
-    expect(within(ownCard).getByRole('button', { name: 'Hapus' })).toBeInTheDocument()
+    const foreignCard = cardFor('LYNK')
+    expect(within(foreignCard).getByRole('button', { name: 'Penyesuaian' })).toBeInTheDocument()
+    expect(within(foreignCard).getByRole('button', { name: 'Transfer' })).toBeInTheDocument()
+    expect(within(foreignCard).getByRole('button', { name: 'Ubah' })).toBeInTheDocument()
+    expect(within(foreignCard).getByRole('button', { name: 'Arsipkan' })).toBeInTheDocument()
+    expect(within(foreignCard).getByRole('button', { name: 'Hapus' })).toBeInTheDocument()
+  })
 
-    const foreignCard = screen.getByText('LYNK').closest('div.rounded-2xl') as HTMLElement
-    expect(within(foreignCard).queryByRole('button', { name: 'Transfer' })).not.toBeInTheDocument()
-    expect(within(foreignCard).queryByRole('button', { name: 'Ubah' })).not.toBeInTheDocument()
-    expect(within(foreignCard).queryByRole('button', { name: 'Arsipkan' })).not.toBeInTheDocument()
-    expect(within(foreignCard).queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
+  it('opens the adjustment modal from a source card and submits a top-up', async () => {
+    mocks.accounts = [funding]
+    renderPage()
+    await screen.findByText('IB HFM')
+    fireEvent.click(within(cardFor('IB HFM')).getByRole('button', { name: 'Penyesuaian' }))
+    expect(await screen.findByText('Penyesuaian Saldo')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Jumlah (Rp)'), { target: { value: '250000' } })
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form') as HTMLFormElement)
+    })
+    const ft = mocks.chains['funding_transactions']
+    expect(ft?.insert).toHaveBeenCalledWith(expect.objectContaining({
+      account_id: 'fund-1',
+      amount: 250000,
+      date: todayISO(),
+      note: '',
+    }))
+    expect(await screen.findByText('Penyesuaian disimpan')).toBeInTheDocument()
+  })
+
+  it('shows recent funding adjustments as history on the card', async () => {
+    mocks.accounts = [funding]
+    mocks.fundingTransactions = [
+      { id: 'f1', account_id: 'fund-1', amount: 250000, date: '2026-03-01', note: 'top up', created_at: '2026-03-01T00:00:00Z' },
+      { id: 'f2', account_id: 'fund-1', amount: -100000, date: '2026-02-15', note: 'withdraw', created_at: '2026-02-15T00:00:00Z' },
+    ]
+    renderPage()
+    await screen.findByText('IB HFM')
+    const card = cardFor('IB HFM')
+    expect(within(card).getByText('2026-03-01')).toBeInTheDocument()
+    expect(within(card).getByText('+Rp 250.000')).toBeInTheDocument()
+    expect(within(card).getByText('2026-02-15')).toBeInTheDocument()
+    expect(within(card).getByText('-Rp 100.000')).toBeInTheDocument()
   })
 })
