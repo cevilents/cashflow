@@ -13,6 +13,7 @@ import { useAccounts } from '../hooks/useAccounts'
 import { useCategories } from '../hooks/useCategories'
 import { useTransactions } from '../hooks/useTransactions'
 import { useRecurring } from '../hooks/useRecurring'
+import { useFundingTransactions } from '../hooks/useFundingTransactions'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/ui/Toast'
 
@@ -23,6 +24,7 @@ export default function SettingsPage() {
   const { data: categories } = useCategories()
   const { data: transactions } = useTransactions()
   const { data: recurring } = useRecurring()
+  const { data: fundingTransactions } = useFundingTransactions()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -37,6 +39,7 @@ export default function SettingsPage() {
       categories: categories ?? [],
       transactions: transactions ?? [],
       recurring: recurring ?? [],
+      fundingTransactions: fundingTransactions ?? [],
     })
     const filename = `cashflow-backup-${new Date().toISOString().slice(0, 10)}.json`
     downloadFile(filename, JSON.stringify(backup, null, 2), 'application/json;charset=utf-8')
@@ -62,6 +65,7 @@ export default function SettingsPage() {
         qc.invalidateQueries({ queryKey: ['categories'] }),
         qc.invalidateQueries({ queryKey: ['transactions'] }),
         qc.invalidateQueries({ queryKey: ['recurring'] }),
+        qc.invalidateQueries({ queryKey: ['funding-transactions'] }),
       ])
       toast('Data berhasil diimpor')
     } catch (err) {

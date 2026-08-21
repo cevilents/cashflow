@@ -1,7 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Account, Category, RecurringTransaction, Transaction } from '../types/database'
+import type {
+  Account,
+  Category,
+  FundingTransaction,
+  RecurringTransaction,
+  Transaction,
+} from '../types/database'
 
-export const BACKUP_VERSION = 1
+export const BACKUP_VERSION = 2
 
 export interface BackupFile {
   format_version: number
@@ -11,6 +17,7 @@ export interface BackupFile {
   categories: Category[]
   transactions: Transaction[]
   recurring: RecurringTransaction[]
+  fundingTransactions: FundingTransaction[]
 }
 
 export function buildBackup(input: {
@@ -19,6 +26,7 @@ export function buildBackup(input: {
   categories: Category[]
   transactions: Transaction[]
   recurring: RecurringTransaction[]
+  fundingTransactions: FundingTransaction[]
 }): BackupFile {
   return {
     format_version: BACKUP_VERSION,
@@ -28,6 +36,7 @@ export function buildBackup(input: {
     categories: [...input.categories],
     transactions: [...input.transactions],
     recurring: [...input.recurring],
+    fundingTransactions: [...input.fundingTransactions],
   }
 }
 
@@ -71,6 +80,7 @@ export function parseBackup(text: string): BackupParseResult {
       categories: asArray(parsed.categories) as Category[],
       transactions: asArray(parsed.transactions) as Transaction[],
       recurring: asArray(parsed.recurring) as RecurringTransaction[],
+      fundingTransactions: asArray(parsed.fundingTransactions) as FundingTransaction[],
     },
   }
 }
@@ -84,12 +94,19 @@ export interface ImportCounts {
   categories: number
   transactions: number
   recurring: number
+  fundingTransactions: number
 }
 
 type ImportDb = Pick<SupabaseClient, 'from'>
 
 export async function executeImport(db: ImportDb, backup: BackupFile): Promise<ImportCounts> {
-  const counts: ImportCounts = { accounts: 0, categories: 0, transactions: 0, recurring: 0 }
+  const counts: ImportCounts = {
+    accounts: 0,
+    categories: 0,
+    transactions: 0,
+    recurring: 0,
+    fundingTransactions: 0,
+  }
 
   if (backup.accounts.length > 0) {
     const rows = backup.accounts.map((r) => ({ ...r, user_id: backup.user_id }))
@@ -117,6 +134,14 @@ export async function executeImport(db: ImportDb, backup: BackupFile): Promise<I
     const { error } = await db.from('recurring_transactions').upsert(rows, { onConflict: 'id' })
     if (error) throw error
     counts.recurring = rows.length
+  }
+
+  if (backup.fundingTransactions.length > 0) {
+    const { error } = await db.from('funding_transactions').upsert(backup.fundingTransactions, {
+      onConflict: 'id',
+    })
+    if (error) throw error
+    counts.fundingTransactions = backup.fundingTransactions.length
   }
 
   return counts

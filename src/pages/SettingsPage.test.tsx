@@ -5,7 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '../components/ui/Toast'
 import SettingsPage from './SettingsPage'
 import { createQueryClient, makeQueryChain } from '../test/queryTestUtils'
-import type { Account, Category, RecurringTransaction, Transaction } from '../types/database'
+import type { Account, Category, FundingTransaction, RecurringTransaction, Transaction } from '../types/database'
 import type { Member } from '../lib/members'
 
 const mocks = vi.hoisted(() => ({
@@ -63,6 +63,10 @@ const recurring: RecurringTransaction = {
   type: 'expense', amount: 100000, frequency: 'monthly', next_due_date: '2026-09-01',
   is_active: true, created_at: '2026-01-01T00:00:00Z',
 }
+const fundingTransaction: FundingTransaction = {
+  id: 'ft-1', account_id: 'acc-1', amount: 250000, date: '2026-08-05', note: 'Top up',
+  created_at: '2026-08-05T00:00:00Z',
+}
 
 function installMock() {
   mocks.from.mockImplementation((table: string) => {
@@ -74,8 +78,9 @@ function installMock() {
         table === 'accounts' ? [account]
         : table === 'categories' ? [category]
         : table === 'transactions' ? [transaction]
+        : table === 'funding_transactions' ? [fundingTransaction]
         : [recurring]
-      if (table === 'transactions') {
+      if (table === 'transactions' || table === 'funding_transactions') {
         chain.order.mockImplementation((col: unknown) =>
           col === 'date' ? chain : Promise.resolve({ data, error: null }),
         )
@@ -132,25 +137,27 @@ describe('SettingsPage', () => {
     expect(filename).toMatch(/^cashflow-backup-\d{4}-\d{2}-\d{2}\.json$/)
     expect(type).toBe('application/json;charset=utf-8')
     const parsed = JSON.parse(content)
-    expect(parsed.format_version).toBe(1)
+    expect(parsed.format_version).toBe(2)
     expect(parsed.user_id).toBe('user-1')
     expect(parsed.accounts).toEqual([account])
     expect(parsed.categories).toEqual([category])
     expect(parsed.transactions).toEqual([transaction])
     expect(parsed.recurring).toEqual([recurring])
+    expect(parsed.fundingTransactions).toEqual([fundingTransaction])
   })
 
   it('imports a valid same-account backup and shows a success toast', async () => {
     renderPage()
     await awaitData()
     const json = JSON.stringify({
-      format_version: 1,
+      format_version: 2,
       user_id: 'user-1',
       exported_at: '2026-08-20T00:00:00Z',
       accounts: [account],
       categories: [category],
       transactions: [transaction],
       recurring: [recurring],
+      fundingTransactions: [fundingTransaction],
     })
     const file = new File([json], 'backup.json', { type: 'application/json' })
     await act(async () => {
@@ -192,7 +199,7 @@ describe('SettingsPage', () => {
     renderPage()
     await awaitData()
     const json = JSON.stringify({
-      format_version: 1,
+      format_version: 2,
       user_id: 'user-2',
       accounts: [],
       categories: [],

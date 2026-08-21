@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { BACKUP_VERSION, buildBackup, executeImport, parseBackup, validateBackupOwner } from './backup'
-import type { Account, Category, RecurringTransaction, Transaction } from '../types/database'
+import type { Account, Category, FundingTransaction, RecurringTransaction, Transaction } from '../types/database'
 
 type ImportDb = Parameters<typeof executeImport>[0]
 
@@ -22,6 +22,10 @@ const recurring: RecurringTransaction = {
   type: 'expense', amount: 100000, frequency: 'monthly', next_due_date: '2026-09-01',
   is_active: true, created_at: '2026-01-01T00:00:00Z',
 }
+const fundingTransaction: FundingTransaction = {
+  id: 'ft-1', account_id: 'acc-1', amount: 250000, date: '2026-08-05', note: 'Top up',
+  created_at: '2026-08-05T00:00:00Z',
+}
 
 function channel() {
   const upsert = vi
@@ -39,6 +43,7 @@ describe('buildBackup', () => {
       categories: [category],
       transactions: [transaction],
       recurring: [recurring],
+      fundingTransactions: [fundingTransaction],
     })
     expect(backup.format_version).toBe(BACKUP_VERSION)
     expect(backup.user_id).toBe('user-1')
@@ -47,11 +52,14 @@ describe('buildBackup', () => {
     expect(backup.categories).toEqual([category])
     expect(backup.transactions).toEqual([transaction])
     expect(backup.recurring).toEqual([recurring])
+    expect(backup.fundingTransactions).toEqual([fundingTransaction])
     ;(Date.prototype.toISOString as unknown as ReturnType<typeof vi.fn>).mockRestore()
   })
 
   it('clones the input arrays so callers cannot mutate the backup', () => {
-    const backup = buildBackup({ userId: 'u', accounts: [account], categories: [], transactions: [], recurring: [] })
+    const backup = buildBackup({
+      userId: 'u', accounts: [account], categories: [], transactions: [], recurring: [], fundingTransactions: [],
+    })
     expect(backup.accounts).not.toBe(account)
   })
 })
@@ -59,11 +67,12 @@ describe('buildBackup', () => {
 describe('parseBackup', () => {
   it('accepts a well-formed backup', () => {
     const raw = JSON.stringify({
-      format_version: 1,
+      format_version: 2,
       user_id: 'user-1',
       exported_at: '2026-08-20T00:00:00Z',
       accounts: [account],
       transactions: [transaction],
+      fundingTransactions: [fundingTransaction],
     })
     const result = parseBackup(raw)
     expect(result.ok).toBe(true)
@@ -72,6 +81,21 @@ describe('parseBackup', () => {
       expect(result.data.accounts).toEqual([account])
       expect(result.data.transactions).toEqual([transaction])
       expect(result.data.categories).toEqual([])
+      expect(result.data.fundingTransactions).toEqual([fundingTransaction])
+    }
+  })
+
+  it('accepts a backup without a fundingTransactions key', () => {
+    const raw = JSON.stringify({
+      format_version: 2,
+      user_id: 'user-1',
+      exported_at: '2026-08-20T00:00:00Z',
+      accounts: [account],
+    })
+    const result = parseBackup(raw)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.fundingTransactions).toEqual([])
     }
   })
 
@@ -90,7 +114,7 @@ describe('parseBackup', () => {
   })
 
   it('rejects a backup without an owning user id', () => {
-    const result = parseBackup(JSON.stringify({ format_version: 1 }))
+    const result = parseBackup(JSON.stringify({ format_version: 2 }))
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error).toBe('invalid-structure')
   })
@@ -113,45 +137,50 @@ describe('executeImport', () => {
     const ch = channel()
     const db = { from: ch.from } as unknown as ImportDb
     const backup = {
-      format_version: 1,
+      format_version: 2,
       user_id: 'user-1',
       exported_at: '2026-08-20T00:00:00Z',
       accounts: [account],
       categories: [category],
       transactions: [transaction],
       recurring: [recurring],
+      fundingTransactions: [fundingTransaction],
     }
 
     const counts = await executeImport(db, backup)
 
-    expect(counts).toEqual({ accounts: 1, categories: 1, transactions: 1, recurring: 1 })
+    expect(counts).toEqual({ accounts: 1, categories: 1, transactions: 1, recurring: 1, fundingTransactions: 1 })
     expect(ch.from.mock.calls.map((c) => c[0])).toEqual([
       'accounts',
       'categories',
       'transactions',
       'recurring_transactions',
+      'funding_transactions',
     ])
     expect(ch.upsert).toHaveBeenCalledWith(expect.any(Array), { onConflict: 'id' })
     const accountsCall = ch.upsert.mock.calls[0]?.[0] as Account[]
     expect(accountsCall[0]?.user_id).toBe('user-1')
+    const fundingCall = ch.upsert.mock.calls[4]?.[0] as FundingTransaction[]
+    expect(fundingCall[0]).toEqual(fundingTransaction)
   })
 
   it('skips empty tables and preserves the order', async () => {
     const ch = channel()
     const db = { from: ch.from } as unknown as ImportDb
     const backup = {
-      format_version: 1,
+      format_version: 2,
       user_id: 'user-1',
       exported_at: '2026-08-20T00:00:00Z',
       accounts: [account],
       categories: [],
       transactions: [],
       recurring: [recurring],
+      fundingTransactions: [],
     }
 
     const counts = await executeImport(db, backup)
 
-    expect(counts).toEqual({ accounts: 1, categories: 0, transactions: 0, recurring: 1 })
+    expect(counts).toEqual({ accounts: 1, categories: 0, transactions: 0, recurring: 1, fundingTransactions: 0 })
     expect(ch.from.mock.calls.map((c) => c[0])).toEqual(['accounts', 'recurring_transactions'])
   })
 
@@ -161,13 +190,14 @@ describe('executeImport', () => {
       .mockResolvedValue({ error: { message: 'constraint violated' } })
     const db = { from: vi.fn(() => ({ upsert })) } as unknown as ImportDb
     const backup = {
-      format_version: 1,
+      format_version: 2,
       user_id: 'user-1',
       exported_at: '2026-08-20T00:00:00Z',
       accounts: [account],
       categories: [],
       transactions: [],
       recurring: [],
+      fundingTransactions: [],
     }
 
     await expect(executeImport(db, backup)).rejects.toThrow('constraint violated')
