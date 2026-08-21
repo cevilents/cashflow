@@ -152,7 +152,7 @@ export default function AccountsPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-ink">Akun</h1>
-          <p className="text-sm text-ink-muted">Sumber dana dan transfer antar akun</p>
+          <p className="text-sm text-ink-muted">Rekening dan transfer antar akun</p>
         </div>
         <div className="flex gap-2">
           {canManage && (
