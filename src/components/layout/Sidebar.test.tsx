@@ -33,7 +33,7 @@ vi.mock('../../hooks/useReadOnly', () => ({
   useCurrentMember: () => mocks.currentMember,
 }))
 
-const navLabels = ['Dashboard', 'Transaksi', 'Akun', 'Kategori', 'Berulang']
+const navLabels = ['Dashboard', 'Transaksi', 'Akun', 'Sumber Dana', 'Kategori']
 
 function renderLayout(path: string) {
   return render(
@@ -43,6 +43,7 @@ function renderLayout(path: string) {
           <Route path="/" element={<p>dashboard-content</p>} />
           <Route path="/transactions" element={<p>transactions-content</p>} />
           <Route path="/accounts" element={<p>accounts-content</p>} />
+          <Route path="/sources" element={<p>sources-content</p>} />
           <Route path="/categories" element={<p>categories-content</p>} />
           <Route path="/recurring" element={<p>recurring-content</p>} />
           <Route path="/reports" element={<p>reports-content</p>} />
@@ -81,6 +82,7 @@ describe('AppLayout', () => {
     expect(byLabel['Dashboard']).toHaveAttribute('href', '/')
     expect(byLabel['Transaksi']).toHaveAttribute('href', '/transactions')
     expect(byLabel['Akun']).toHaveAttribute('href', '/accounts')
+    expect(byLabel['Sumber Dana']).toHaveAttribute('href', '/sources')
     expect(byLabel['Kategori']).toHaveAttribute('href', '/categories')
     expect(byLabel['Berulang']).toHaveAttribute('href', '/recurring')
     expect(byLabel['Laporan']).toHaveAttribute('href', '/reports')
