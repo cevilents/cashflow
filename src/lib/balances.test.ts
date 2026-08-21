@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeAccountBalances, totalBalance, totalBalanceByMember } from './balances'
+import { computeAccountBalances, totalBalance, totalBalanceByMember, spendableTotalBalance, totalFundingBalance } from './balances'
 import type { Account, Transaction } from '../types/database'
 
 const acc = (id: string, opening = 0, userId = 'u'): Account => ({
@@ -70,5 +70,18 @@ describe('totalBalanceByMember', () => {
     const result = totalBalanceByMember(balances, accounts, members)
     expect(result.find((r) => r.memberId === 'a')?.total).toBe(100)
     expect(result.find((r) => r.memberId === 'c')?.total).toBe(0)
+  })
+})
+
+describe('spendableTotalBalance', () => {
+  it('excludes funding accounts from the global total', () => {
+    const accounts = [
+      { ...acc('cash-a', 100), type: 'cash' as const },
+      { ...acc('fund-a', 500), type: 'funding' as const },
+    ]
+    const balances = computeAccountBalances(accounts, [])
+    expect(spendableTotalBalance(balances, accounts)).toBe(100)
+    expect(totalFundingBalance(balances, accounts)).toBe(500)
+    expect(totalBalance(balances)).toBe(600)
   })
 })

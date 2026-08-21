@@ -1,4 +1,5 @@
 import type { Account, Transaction } from '../types/database'
+import { isFundingAccount } from './accounts'
 
 export function computeAccountBalances(
   accounts: Account[],
@@ -22,6 +23,18 @@ export function computeAccountBalances(
 
 export function totalBalance(balances: Record<string, number>): number {
   return Object.values(balances).reduce((sum, v) => sum + v, 0)
+}
+
+export function spendableTotalBalance(balances: Record<string, number>, accounts: Account[]): number {
+  return accounts
+    .filter((a) => !isFundingAccount(a))
+    .reduce((sum, a) => sum + (balances[a.id] ?? 0), 0)
+}
+
+export function totalFundingBalance(balances: Record<string, number>, accounts: Account[]): number {
+  return accounts
+    .filter((a) => isFundingAccount(a))
+    .reduce((sum, a) => sum + (balances[a.id] ?? 0), 0)
 }
 
 export function totalBalanceByMember(
