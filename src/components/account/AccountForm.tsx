@@ -44,7 +44,7 @@ export function AccountForm({
       setBalanceRaw('')
       setColor('#10b981')
     }
-  }, [open, editing])
+  }, [open, editing, lockType])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
