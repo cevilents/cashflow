@@ -1,17 +1,16 @@
 import { useMemo, useState } from 'react'
-import { Plus, ArrowLeftRight, ArrowDownToLine, Pencil, Archive, Trash2 } from 'lucide-react'
+import { Plus, ArrowLeftRight, Pencil, Archive, Trash2 } from 'lucide-react'
 import { useAccounts, useDeleteAccount, useUpdateAccount } from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
 import { useMembers } from '../hooks/useMembers'
 import { useReadOnly, useCurrentMember } from '../hooks/useReadOnly'
-import { computeAccountBalances, spendableTotalBalance, totalFundingBalance } from '../lib/balances'
-import { isFundingAccount, isSpendableAccount } from '../lib/accounts'
+import { computeAccountBalances, spendableTotalBalance } from '../lib/balances'
+import { isSpendableAccount } from '../lib/accounts'
 import { formatRupiah } from '../lib/format'
 import { getMemberById } from '../lib/members'
 import type { Member } from '../lib/members'
 import { AccountForm } from '../components/account/AccountForm'
 import { TransferModal } from '../components/account/TransferModal'
-import { FundingTransferModal } from '../components/account/FundingTransferModal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
@@ -30,10 +29,9 @@ interface AccountCardProps {
   onEdit: (a: Account) => void
   onToggleArchive: (a: Account) => void
   onDelete: (a: Account) => void
-  onTransfer?: (a: Account) => void
 }
 
-function AccountCard({ account, balances, txCount, members, onEdit, onToggleArchive, onDelete, onTransfer }: AccountCardProps) {
+function AccountCard({ account, balances, txCount, members, onEdit, onToggleArchive, onDelete }: AccountCardProps) {
   const readOnly = useReadOnly(account.user_id)
   const member = getMemberById(account.user_id, members)
 
@@ -55,11 +53,6 @@ function AccountCard({ account, balances, txCount, members, onEdit, onToggleArch
         <span className="text-xs text-ink-muted">{txCount} transaksi</span>
         {!readOnly && (
           <div className="flex gap-1">
-            {account.type === 'funding' && onTransfer && (
-              <Button variant="ghost" size="sm" onClick={() => onTransfer(account)} aria-label="Transfer">
-                <ArrowDownToLine className="h-4 w-4" />
-              </Button>
-            )}
             <Button variant="ghost" size="sm" onClick={() => onEdit(account)} aria-label="Ubah">
               <Pencil className="h-4 w-4" />
             </Button>
@@ -89,7 +82,6 @@ export default function AccountsPage() {
   const [editing, setEditing] = useState<Account | null>(null)
   const [transferOpen, setTransferOpen] = useState(false)
   const [deleting, setDeleting] = useState<Account | null>(null)
-  const [fundingTransfer, setFundingTransfer] = useState<Account | null>(null)
   const [owner, setOwner] = useState<OwnerFilter>('all')
 
   const balances = useMemo(
@@ -102,11 +94,6 @@ export default function AccountsPage() {
     [balances, accounts],
   )
 
-  const fundingTotal = useMemo(
-    () => totalFundingBalance(balances, accounts ?? []),
-    [balances, accounts],
-  )
-
   const txCountByAccount = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const t of transactions ?? []) {
@@ -116,7 +103,6 @@ export default function AccountsPage() {
     return counts
   }, [transactions])
 
-  const funding = (accounts ?? []).filter((a) => !a.is_archived && isFundingAccount(a) && (owner === 'all' || a.user_id === owner))
   const list = (accounts ?? []).filter((a) => !a.is_archived && isSpendableAccount(a) && (owner === 'all' || a.user_id === owner))
   const archived = (accounts ?? []).filter((a) => a.is_archived && (owner === 'all' || a.user_id === owner))
 
@@ -189,30 +175,6 @@ export default function AccountsPage() {
         <p className="mt-1 text-3xl font-bold text-ink tabular">{formatRupiah(total)}</p>
       </div>
 
-      {funding.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-semibold text-ink">Sumber Dana</h2>
-            <span className="text-sm text-ink-muted tabular">{formatRupiah(fundingTotal)}</span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {funding.map((a) => (
-              <AccountCard
-                key={a.id}
-                account={a}
-                balances={balances}
-                txCount={txCountByAccount[a.id] ?? 0}
-                members={members ?? []}
-                onEdit={openEdit}
-                onToggleArchive={toggleArchive}
-                onDelete={setDeleting}
-                onTransfer={setFundingTransfer}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {list.length === 0 ? (
         <EmptyState title="Belum ada akun" message="Buat akun pertama (tunai, bank, atau e-wallet) untuk mulai mencatat." />
       ) : (
@@ -254,7 +216,6 @@ export default function AccountsPage() {
 
       <AccountForm open={formOpen} onClose={() => setFormOpen(false)} editing={editing} />
       <TransferModal open={transferOpen} onClose={() => setTransferOpen(false)} />
-      <FundingTransferModal open={fundingTransfer !== null} onClose={() => setFundingTransfer(null)} source={fundingTransfer} />
       <ConfirmDialog
         open={deleting !== null}
         title="Hapus akun?"

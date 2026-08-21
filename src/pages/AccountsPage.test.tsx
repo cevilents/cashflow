@@ -269,42 +269,14 @@ describe('AccountsPage', () => {
     expect(within(foreignCard).getByText('Aska')).toBeInTheDocument()
   })
 
-  it('renders funding sources in a separate section with their own total', async () => {
-    mocks.accounts = [
-      ...accounts,
-      { id: 'fund-1', user_id: 'user-1', name: 'IB HFM', type: 'funding', opening_balance: 500000, color: '#aaa', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
-    ]
-    mocks.transactions = []
-    renderPage()
-
-    expect((await screen.findAllByText('Sumber Dana')).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('IB HFM')).toBeInTheDocument()
-    expect(screen.getAllByText('Rp 500.000').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Total saldo')).toBeInTheDocument()
-    expect(screen.getByText('Dompet')).toBeInTheDocument()
-  })
-
-  it('excludes funding accounts from the global total balance', async () => {
+  it('does not render funding sources on the accounts page', async () => {
     mocks.accounts = [
       { id: 'acc-1', user_id: 'user-1', name: 'Dompet', type: 'cash', opening_balance: 100000, color: '#10b981', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
       { id: 'fund-1', user_id: 'user-1', name: 'IB HFM', type: 'funding', opening_balance: 500000, color: '#aaa', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
     ]
     mocks.transactions = []
     renderPage()
-
     await screen.findByText('Dompet')
-    expect(screen.getAllByText('Rp 100.000').length).toBeGreaterThanOrEqual(1)
-    expect(screen.queryByText('Rp 600.000')).not.toBeInTheDocument()
-  })
-
-  it('opens the funding transfer modal from a source card transfer button', async () => {
-    mocks.accounts = [
-      ...accounts,
-      { id: 'fund-1', user_id: 'user-1', name: 'IB HFM', type: 'funding', opening_balance: 500000, color: '#aaa', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
-    ]
-    renderPage()
-    await screen.findByText('IB HFM')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Transfer' }).find((b) => b.closest('div.rounded-2xl')?.textContent?.includes('IB HFM')) as HTMLButtonElement)
-    expect(await screen.findByText('Transfer dari Sumber Dana')).toBeInTheDocument()
+    expect(screen.queryByText('IB HFM')).not.toBeInTheDocument()
   })
 })
