@@ -19,9 +19,9 @@ const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/transactions', label: 'Transaksi', icon: ArrowLeftRight },
   { to: '/accounts', label: 'Akun', icon: Wallet },
-  { to: '/sources', label: 'Sumber Dana', icon: Landmark },
   { to: '/categories', label: 'Kategori', icon: Tags },
   { to: '/recurring', label: 'Berulang', icon: CalendarClock },
+  { to: '/sources', label: 'Sumber Dana', icon: Landmark },
   { to: '/reports', label: 'Laporan', icon: FileChartColumn },
   { to: '/settings', label: 'Pengaturan', icon: Settings },
 ]

@@ -33,7 +33,7 @@ vi.mock('../../hooks/useReadOnly', () => ({
   useCurrentMember: () => mocks.currentMember,
 }))
 
-const navLabels = ['Dashboard', 'Transaksi', 'Akun', 'Sumber Dana', 'Kategori']
+const navLabels = ['Dashboard', 'Transaksi', 'Akun', 'Kategori', 'Berulang']
 
 function renderLayout(path: string) {
   return render(
@@ -126,6 +126,8 @@ describe('AppLayout', () => {
     const nav = screen.getByLabelText('Navigasi bawah')
     const links = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)
     expect(links).toEqual(navLabels)
+    expect(links).toContain('Berulang')
+    expect(links).not.toContain('Sumber Dana')
     expect(links).not.toContain('Laporan')
     expect(links).not.toContain('Pengaturan')
   })
