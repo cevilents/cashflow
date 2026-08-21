@@ -7,7 +7,7 @@ import {
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 import { useCategories } from '../hooks/useCategories'
-import { computeAccountBalances, totalBalance, totalBalanceByMember } from '../lib/balances'
+import { computeAccountBalances, spendableTotalBalance, totalBalanceByMember } from '../lib/balances'
 import { formatRupiah } from '../lib/format'
 import { buildMonthlySeries, buildCategoryBreakdown, recentTransactions } from '../lib/dashboard'
 import { Button } from '../components/ui/Button'
@@ -40,7 +40,7 @@ export default function DashboardPage() {
     () => computeAccountBalances(accounts ?? [], txs),
     [accounts, txs],
   )
-  const total = useMemo(() => totalBalance(balances), [balances])
+  const total = useMemo(() => spendableTotalBalance(balances, accounts ?? []), [balances, accounts])
   const memberCards = useMemo(
     () => totalBalanceByMember(balances, accounts ?? [], memberList.map(({ id, name, color }) => ({ id, name, color }))),
     [balances, accounts, memberList],

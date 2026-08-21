@@ -195,4 +195,20 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('Uang di Bima')).not.toBeInTheDocument()
     expect(screen.queryByText('Semua')).not.toBeInTheDocument()
   })
+
+  it('excludes funding sources from global total and member card', async () => {
+    mocks.accounts = [
+      { id: 'acc-1', user_id: 'user-1', name: 'Tunai', type: 'cash', opening_balance: 100000, color: '#10b981', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+      { id: 'fund-1', user_id: 'user-1', name: 'IB HFM', type: 'funding', opening_balance: 500000, color: '#aaa', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+    ]
+    renderPage()
+
+    expect(await screen.findByText('Total Saldo')).toBeInTheDocument()
+    expect(screen.getByText('Uang di Bima')).toBeInTheDocument()
+    // spendable only (100.000) appears in both the global total and Bima's card
+    expect(screen.getAllByText('Rp 100.000')).toHaveLength(2)
+    // funding is never mixed in: 600.000 would appear if it were
+    expect(screen.queryByText('Rp 600.000')).not.toBeInTheDocument()
+    expect(screen.queryByText('Rp 500.000')).not.toBeInTheDocument()
+  })
 })

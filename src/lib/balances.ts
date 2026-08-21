@@ -44,6 +44,7 @@ export function totalBalanceByMember(
 ) {
   const totals = new Map<string, number>()
   for (const acc of accounts) {
+    if (isFundingAccount(acc)) continue
     totals.set(acc.user_id, (totals.get(acc.user_id) ?? 0) + (balances[acc.id] ?? 0))
   }
   return members.map((m) => ({

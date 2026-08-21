@@ -9,7 +9,7 @@ import { useAccounts } from '../../hooks/useAccounts'
 import { useCreateTransaction } from '../../hooks/useTransactions'
 import { parseAmountInput, formatRupiah } from '../../lib/format'
 import { todayISO } from '../../lib/dates'
-import { isSpendableAccount } from '../../lib/accounts'
+import { isSpendableAccount, isFundingAccount } from '../../lib/accounts'
 import type { Account } from '../../types/database'
 
 export function FundingTransferModal({
@@ -46,7 +46,7 @@ export function FundingTransferModal({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!source) return
+    if (!source || !isFundingAccount(source)) return
     if (!to) {
       toast('Pilih akun tujuan', 'error')
       return

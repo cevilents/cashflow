@@ -71,6 +71,16 @@ describe('totalBalanceByMember', () => {
     expect(result.find((r) => r.memberId === 'a')?.total).toBe(100)
     expect(result.find((r) => r.memberId === 'c')?.total).toBe(0)
   })
+  it('excludes funding accounts from member totals', () => {
+    const accounts = [
+      { ...acc('acc-a', 100), type: 'cash' as const },
+      { ...acc('fund-a', 500), type: 'funding' as const },
+    ]
+    const balances = computeAccountBalances(accounts, [])
+    const members = [{ id: 'u', name: 'Bima', color: '#10b981' }]
+    const result = totalBalanceByMember(balances, accounts, members)
+    expect(result.find((r) => r.memberId === 'u')?.total).toBe(100)
+  })
 })
 
 describe('spendableTotalBalance', () => {
