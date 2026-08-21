@@ -59,3 +59,12 @@ export interface RecurringTransaction {
   is_active: boolean
   created_at: string
 }
+
+export interface FundingTransaction {
+  id: string
+  account_id: string
+  amount: number
+  date: string
+  note: string
+  created_at: string
+}

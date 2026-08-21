@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeAccountBalances, totalBalance, totalBalanceByMember, spendableTotalBalance, totalFundingBalance } from './balances'
-import type { Account, Transaction } from '../types/database'
+import type { Account, Transaction, FundingTransaction } from '../types/database'
 
 const acc = (id: string, opening = 0, userId = 'u'): Account => ({
   id, user_id: userId, name: id, type: 'cash', opening_balance: opening,
@@ -93,5 +93,40 @@ describe('spendableTotalBalance', () => {
     expect(spendableTotalBalance(balances, accounts)).toBe(100)
     expect(totalFundingBalance(balances, accounts)).toBe(500)
     expect(totalBalance(balances)).toBe(600)
+  })
+})
+
+describe('computeAccountBalances + fundingTransactions', () => {
+  const ft = (partial: Partial<FundingTransaction>): FundingTransaction => ({
+    id: partial.id ?? 'f',
+    account_id: partial.account_id ?? 'a',
+    amount: partial.amount ?? 0,
+    date: partial.date ?? '2026-08-01',
+    note: partial.note ?? '',
+    created_at: '',
+  })
+
+  it('adds funding top-ups and subtracts withdrawals on top of opening balance', () => {
+    const accounts = [
+      { ...acc('fund-a', 1000), type: 'funding' as const },
+    ]
+    const transactions: Transaction[] = []
+    const funding = [
+      ft({ account_id: 'fund-a', amount: 500 }),
+      ft({ account_id: 'fund-a', amount: -200 }),
+    ]
+    const withFunding = computeAccountBalances as (
+      a: Account[],
+      t: Transaction[],
+      f: FundingTransaction[],
+    ) => Record<string, number>
+    const r = withFunding(accounts, transactions, funding)
+    expect(r['fund-a']).toBe(1300)
+  })
+
+  it('leaves balances unchanged when no fundingTransactions is passed', () => {
+    const accounts = [{ ...acc('fund-a', 1000), type: 'funding' as const }]
+    const r = computeAccountBalances(accounts, [])
+    expect(r['fund-a']).toBe(1000)
   })
 })
