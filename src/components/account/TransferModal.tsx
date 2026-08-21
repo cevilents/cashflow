@@ -9,6 +9,7 @@ import { useAccounts } from '../../hooks/useAccounts'
 import { useCreateTransaction } from '../../hooks/useTransactions'
 import { parseAmountInput, formatRupiah } from '../../lib/format'
 import { todayISO } from '../../lib/dates'
+import { isSpendableAccount } from '../../lib/accounts'
 
 export function TransferModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: accounts } = useAccounts()
@@ -21,7 +22,10 @@ export function TransferModal({ open, onClose }: { open: boolean; onClose: () =>
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const active = useMemo(() => (accounts ?? []).filter((a) => !a.is_archived), [accounts])
+  const active = useMemo(
+    () => (accounts ?? []).filter((a) => !a.is_archived && isSpendableAccount(a)),
+    [accounts],
+  )
 
   useEffect(() => {
     if (!open) return

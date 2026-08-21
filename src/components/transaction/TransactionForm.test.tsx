@@ -49,6 +49,7 @@ vi.mock('../../lib/supabase', () => ({
 const accounts: Account[] = [
   { id: 'acc-1', user_id: 'user-1', name: 'Tunai', type: 'cash', opening_balance: 0, color: '#10b981', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
   { id: 'acc-2', user_id: 'user-1', name: 'BCA', type: 'bank', opening_balance: 0, color: '#3b82f6', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'acc-fund', user_id: 'user-1', name: 'IB HFM', type: 'funding', opening_balance: 0, color: '#aaa', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
 ]
 
 const categories: Category[] = [
@@ -455,5 +456,17 @@ describe('TransactionForm', () => {
     })
 
     expect(client.getQueryState(['accounts', 'user-1'])?.isInvalidated).not.toBe(true)
+  })
+
+  it('does not list funding accounts in account dropdowns', async () => {
+    renderForm()
+    const akunSelect = screen.getByLabelText('Akun') as HTMLSelectElement
+    const akunOptions = Array.from(akunSelect.options).map((o) => o.value)
+    expect(akunOptions).not.toContain('acc-fund')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    const transferToSelect = screen.getByLabelText('Transfer ke') as HTMLSelectElement
+    const transferOptions = Array.from(transferToSelect.options).map((o) => o.value)
+    expect(transferOptions).not.toContain('acc-fund')
   })
 })

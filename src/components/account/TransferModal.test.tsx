@@ -26,6 +26,7 @@ const accounts: Account[] = [
   { id: 'acc-1', user_id: 'user-1', name: 'Dompet', type: 'cash', opening_balance: 100000, color: '#10b981', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
   { id: 'acc-2', user_id: 'user-1', name: 'BCA', type: 'bank', opening_balance: 50000, color: '#3b82f6', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
   { id: 'acc-3', user_id: 'user-1', name: 'Rekening Lama', type: 'other', opening_balance: 0, color: '#6366f1', is_archived: true, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'acc-fund', user_id: 'user-1', name: 'IB HFM', type: 'funding', opening_balance: 0, color: '#aaa', is_archived: false, created_at: '2026-01-01T00:00:00Z' },
 ]
 
 function installMock() {
@@ -153,6 +154,17 @@ describe('TransferModal', () => {
     expect(onClose).toHaveBeenCalled()
     expect(client.getQueryState(['transactions', 'user-1'])?.isInvalidated).toBe(true)
     expect(client.getQueryState(['accounts', 'user-1'])?.isInvalidated).toBe(true)
+  })
+
+  it('excludes funding accounts from both dropdowns', async () => {
+    renderModal()
+    await waitForReady()
+    const fromSelect = screen.getByLabelText('Dari akun') as HTMLSelectElement
+    const toSelect = screen.getByLabelText('Ke akun') as HTMLSelectElement
+    const fromOptions = Array.from(fromSelect.options).map((o) => o.value)
+    const toOptions = Array.from(toSelect.options).map((o) => o.value)
+    expect(fromOptions).not.toContain('acc-fund')
+    expect(toOptions).not.toContain('acc-fund')
   })
 
   it('surfaces a transfer failure as an Indonesian error toast', async () => {

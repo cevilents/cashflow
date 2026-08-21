@@ -16,6 +16,7 @@ import { todayISO } from '../../lib/dates'
 import { uploadReceipt, removeReceipt } from '../receipt/receiptStorage'
 import { ReceiptUpload } from '../receipt/ReceiptUpload'
 import { transactionErrorMessage } from '../../lib/transactionErrors'
+import { isSpendableAccount } from '../../lib/accounts'
 import type { Transaction, TransactionType } from '../../types/database'
 
 export function TransactionForm({
@@ -46,7 +47,10 @@ export function TransactionForm({
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const activeAccounts = useMemo(() => (accounts ?? []).filter((a) => !a.is_archived), [accounts])
+  const activeAccounts = useMemo(
+    () => (accounts ?? []).filter((a) => !a.is_archived && isSpendableAccount(a)),
+    [accounts],
+  )
   const typeCategories = useMemo(
     () => (type === 'transfer' ? [] : (categories ?? []).filter((c) => c.type === (type === 'income' ? 'income' : 'expense'))),
     [categories, type],
