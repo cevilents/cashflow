@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeftRight,
   CalendarClock,
@@ -6,12 +7,14 @@ import {
   Landmark,
   LayoutDashboard,
   LogOut,
+  MoreHorizontal,
   Plus,
   Settings,
   Tags,
   Wallet,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { Modal } from '../ui/Modal'
 import { useCurrentMember } from '../../hooks/useReadOnly'
 import { memberInitials } from '../../lib/members'
 
@@ -26,7 +29,9 @@ const nav = [
   { to: '/settings', label: 'Pengaturan', icon: Settings },
 ]
 
-const mobileNav = nav.slice(0, 5)
+const mobilePrimary = nav.slice(0, 4)
+const mobileMore = nav.slice(4)
+const mobileMoreRoutes = new Set(mobileMore.map((m) => m.to))
 
 export function Sidebar() {
   const { user, logout } = useAuth()
@@ -94,29 +99,67 @@ export function Sidebar() {
 }
 
 export function MobileNav() {
+  const { pathname } = useLocation()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreActive = mobileMoreRoutes.has(pathname)
+
   return (
-    <nav
-      aria-label="Navigasi bawah"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border-subtle bg-surface-card px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
-    >
-      <div className="grid grid-cols-5">
-        {mobileNav.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${
-                isActive ? 'text-good' : 'text-ink-muted'
-              }`
-            }
+    <>
+      <nav
+        aria-label="Navigasi bawah"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-subtle bg-surface-card px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        <div className="grid grid-cols-5">
+          {mobilePrimary.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${
+                  isActive ? 'text-good' : 'text-ink-muted'
+                }`
+              }
+            >
+              <Icon className="h-5 w-5" />
+              {label}
+            </NavLink>
+          ))}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-label="Lainnya"
+            className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${
+              moreActive ? 'text-good' : 'text-ink-muted'
+            }`}
           >
-            <Icon className="h-5 w-5" />
-            {label}
-          </NavLink>
-        ))}
-      </div>
-    </nav>
+            <MoreHorizontal className="h-5 w-5" />
+            Lainnya
+          </button>
+        </div>
+      </nav>
+
+      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title="Lainnya">
+        <div className="space-y-1">
+          {mobileMore.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => setMoreOpen(false)}
+              end={to === '/'}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-good/15 text-good' : 'text-ink-muted hover:bg-surface-soft hover:text-ink'
+                }`
+              }
+            >
+              <Icon className="h-5 w-5" />
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      </Modal>
+    </>
   )
 }
 

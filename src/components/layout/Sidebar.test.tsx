@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AppLayout from './AppLayout'
 
@@ -32,8 +32,6 @@ vi.mock('../../hooks/useAuth', () => ({
 vi.mock('../../hooks/useReadOnly', () => ({
   useCurrentMember: () => mocks.currentMember,
 }))
-
-const navLabels = ['Dashboard', 'Transaksi', 'Akun', 'Kategori', 'Berulang']
 
 function renderLayout(path: string) {
   return render(
@@ -121,15 +119,33 @@ describe('AppLayout', () => {
     expect(nav.className).toContain('fixed')
   })
 
-  it('limits the mobile bottom nav to five items', () => {
+  it('shows the primary items and a Lainnya button in the mobile nav', () => {
     renderLayout('/')
     const nav = screen.getByLabelText('Navigasi bawah')
     const links = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)
-    expect(links).toEqual(navLabels)
-    expect(links).toContain('Berulang')
+    expect(links).toEqual(['Dashboard', 'Transaksi', 'Akun', 'Kategori'])
+    const moreBtn = within(nav).getByRole('button', { name: 'Lainnya' })
+    expect(moreBtn).toBeInTheDocument()
+    expect(links).not.toContain('Berulang')
     expect(links).not.toContain('Sumber Dana')
     expect(links).not.toContain('Laporan')
     expect(links).not.toContain('Pengaturan')
+  })
+
+  it('opens the Lainnya panel listing the remaining items', () => {
+    renderLayout('/')
+    fireEvent.click(within(screen.getByLabelText('Navigasi bawah')).getByRole('button', { name: 'Lainnya' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Berulang')).toBeInTheDocument()
+    expect(within(dialog).getByText('Sumber Dana')).toBeInTheDocument()
+    expect(within(dialog).getByText('Laporan')).toBeInTheDocument()
+    expect(within(dialog).getByText('Pengaturan')).toBeInTheDocument()
+  })
+
+  it('marks the Lainnya button active when on a less-common route', () => {
+    renderLayout('/reports')
+    const btn = within(screen.getByLabelText('Navigasi bawah')).getByRole('button', { name: 'Lainnya' })
+    expect(btn.className).toContain('text-good')
   })
 
   it('renders a quick add button linking to a new transaction', () => {
