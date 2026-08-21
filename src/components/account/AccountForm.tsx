@@ -14,10 +14,12 @@ export function AccountForm({
   open,
   onClose,
   editing,
+  lockType,
 }: {
   open: boolean
   onClose: () => void
   editing?: Account | null
+  lockType?: AccountType
 }) {
   const createAcc = useCreateAccount()
   const updateAcc = useUpdateAccount()
@@ -38,7 +40,7 @@ export function AccountForm({
       setColor(editing.color)
     } else {
       setName('')
-      setType('bank')
+      setType(lockType ?? 'bank')
       setBalanceRaw('')
       setColor('#10b981')
     }
@@ -80,11 +82,13 @@ export function AccountForm({
     <Modal open={open} onClose={onClose} title={editing ? 'Edit Akun' : 'Tambah Akun'}>
       <form onSubmit={submit} className="space-y-4">
         <Input label="Nama akun" value={name} onChange={(e) => setName(e.target.value)} placeholder="Misal: BRI, GoPay, Dompet" />
-        <Select label="Tipe" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
-          {Object.entries(accountTypeLabels).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </Select>
+        {!lockType && (
+          <Select label="Tipe" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
+            {Object.entries(accountTypeLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
+        )}
         <Input label="Saldo awal (Rp)" inputMode="numeric" value={balanceRaw} onChange={(e) => setBalanceRaw(e.target.value)} placeholder="0" />
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-ink-muted">Warna</span>

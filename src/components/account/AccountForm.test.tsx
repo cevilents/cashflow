@@ -122,4 +122,41 @@ describe('AccountForm', () => {
     expect(await screen.findByText('network down')).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  it('locks the type to funding and hides the type dropdown when lockType is set', async () => {
+    const onClose = vi.fn()
+    const client = createQueryClient()
+    render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <AccountForm open onClose={onClose} editing={null} lockType="funding" />
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    expect(screen.queryByLabelText('Tipe')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Nama akun'), { target: { value: 'IB HFM' } })
+    fireEvent.change(screen.getByLabelText('Saldo awal (Rp)'), { target: { value: '500000' } })
+    await act(async () => {
+      fireEvent.submit(form())
+    })
+    expect(mocks.create).toHaveBeenCalledWith({
+      name: 'IB HFM',
+      type: 'funding',
+      opening_balance: 500000,
+      color: '#10b981',
+    })
+  })
+
+  it('initializes editing type correctly when lockType is set', () => {
+    const onClose = vi.fn()
+    const client = createQueryClient()
+    render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <AccountForm open onClose={onClose} editing={account} lockType="funding" />
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    expect(screen.queryByLabelText('Tipe')).not.toBeInTheDocument()
+  })
 })
