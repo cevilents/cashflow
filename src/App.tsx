@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import TransactionsPage from './pages/TransactionsPage'
 import AccountsPage from './pages/AccountsPage'
+import FundingSourcesPage from './pages/FundingSourcesPage'
 import CategoriesPage from './pages/CategoriesPage'
 import RecurringPage from './pages/RecurringPage'
 import ReportsPage from './pages/ReportsPage'
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route path="/accounts" element={<AccountsPage />} />
+                <Route path="/sources" element={<FundingSourcesPage />} />
                 <Route path="/categories" element={<CategoriesPage />} />
                 <Route path="/recurring" element={<RecurringPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
