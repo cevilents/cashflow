@@ -1,0 +1,3 @@
+alter table public.accounts drop constraint accounts_type_check;
+alter table public.accounts add constraint accounts_type_check
+  check (type in ('cash','bank','ewallet','other','funding'));

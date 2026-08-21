@@ -5,4 +5,5 @@ export const accountTypeLabels: Record<AccountType, string> = {
   bank: 'Bank',
   ewallet: 'E-wallet',
   other: 'Lainnya',
+  funding: 'Sumber Dana',
 }

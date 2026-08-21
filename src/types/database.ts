@@ -1,4 +1,4 @@
-export type AccountType = 'cash' | 'bank' | 'ewallet' | 'other'
+export type AccountType = 'cash' | 'bank' | 'ewallet' | 'other' | 'funding'
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type CategoryType = 'income' | 'expense'
 export type Frequency = 'weekly' | 'monthly' | 'yearly'
