@@ -1,12 +1,16 @@
-import type { Account, Transaction } from '../types/database'
+import type { Account, Transaction, FundingTransaction } from '../types/database'
 import { isFundingAccount } from './accounts'
 
 export function computeAccountBalances(
   accounts: Account[],
   transactions: Transaction[],
+  fundingTransactions?: FundingTransaction[],
 ): Record<string, number> {
   const balances: Record<string, number> = {}
   for (const acc of accounts) balances[acc.id] = Number(acc.opening_balance) || 0
+  for (const f of fundingTransactions ?? []) {
+    balances[f.account_id] = (balances[f.account_id] ?? 0) + Number(f.amount)
+  }
   for (const t of transactions) {
     const amount = Number(t.amount) || 0
     if (t.type === 'income') {

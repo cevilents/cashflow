@@ -115,12 +115,7 @@ describe('computeAccountBalances + fundingTransactions', () => {
       ft({ account_id: 'fund-a', amount: 500 }),
       ft({ account_id: 'fund-a', amount: -200 }),
     ]
-    const withFunding = computeAccountBalances as (
-      a: Account[],
-      t: Transaction[],
-      f: FundingTransaction[],
-    ) => Record<string, number>
-    const r = withFunding(accounts, transactions, funding)
+    const r = computeAccountBalances(accounts, transactions, funding)
     expect(r['fund-a']).toBe(1300)
   })
 
